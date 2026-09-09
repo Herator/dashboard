@@ -13,7 +13,14 @@ export default function App() {
           <Route
             key={resource.key}
             path={`/${resource.key}`}
-            element={<ResourcePage resourceKey={resource.key} label={resource.label} fields={resource.fields} />}
+            element={
+              <ResourcePage
+                key={resource.key}
+                resourceKey={resource.key}
+                label={resource.label}
+                fields={resource.fields}
+              />
+            }
           />
         ))}
       </Routes>

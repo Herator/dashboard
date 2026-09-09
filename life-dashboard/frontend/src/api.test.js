@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { listItems, getItem, createItem, updateItem, deleteItem } from "./api";
+import { listItems, getItem, createItem, updateItem, deleteItem, apiRequest } from "./api";
 
 function mockFetchOnce(body, { ok = true, status = 200 } = {}) {
   global.fetch = vi.fn().mockResolvedValue({
@@ -54,6 +54,25 @@ describe("api client", () => {
     expect(result).toBeNull();
     const [, options] = global.fetch.mock.calls[0];
     expect(options.method).toBe("DELETE");
+  });
+
+  it("exposes apiRequest for non-CRUD endpoints, sharing the base URL and error handling", async () => {
+    mockFetchOnce({ ok: true });
+    const result = await apiRequest("/api/ai/edit", { method: "POST", body: JSON.stringify({ text: "hi" }) });
+    expect(result).toEqual({ ok: true });
+    const [url, options] = global.fetch.mock.calls[0];
+    expect(url).toBe("http://localhost:8080/api/ai/edit");
+    expect(options.method).toBe("POST");
+    expect(options.headers).toEqual({ "Content-Type": "application/json" });
+  });
+
+  it("apiRequest rejects with a readable error on a non-2xx response", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ detail: "boom" }),
+    });
+    await expect(apiRequest("/api/ai/edit", { method: "POST" })).rejects.toThrow();
   });
 
   it("rejects with a readable error message on a non-2xx response", async () => {

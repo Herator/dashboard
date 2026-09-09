@@ -17,6 +17,11 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+// Public low-level helper: non-CRUD endpoints (e.g. the upcoming
+// `POST /api/ai/edit`) reuse the same base URL and error handling instead of
+// duplicating it.
+export { request as apiRequest };
+
 export function listItems(resource) {
   return request(`/api/${resource}/`);
 }
