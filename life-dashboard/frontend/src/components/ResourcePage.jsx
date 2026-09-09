@@ -9,7 +9,13 @@ function emptyForm(fields) {
   return form;
 }
 
-function toPayload(fields, form) {
+// `omitBlankOptional` is used for create (POST) only: a blank optional field is
+// left out of the payload entirely so the backend's own column default applies.
+// Sending an explicit `null` there would 422 for any field whose model
+// annotation is non-Optional-with-a-default (e.g. `Package.status: str = "unknown"`).
+// On update (PUT) the default (false) is kept: an explicit `null` is how a user
+// clears a previously-set optional value.
+function toPayload(fields, form, { omitBlankOptional = false } = {}) {
   const payload = {};
   for (const field of fields) {
     if (field.type === "list") {
@@ -19,8 +25,11 @@ function toPayload(fields, form) {
         .filter(Boolean);
     } else if (field.type === "checkbox") {
       payload[field.name] = !!form[field.name];
+    } else if (form[field.name] === "") {
+      if (omitBlankOptional && !field.required) continue;
+      payload[field.name] = null;
     } else {
-      payload[field.name] = form[field.name] === "" ? null : form[field.name];
+      payload[field.name] = form[field.name];
     }
   }
   return payload;
@@ -71,12 +80,11 @@ export default function ResourcePage({ resourceKey, label, fields }) {
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
-    const payload = toPayload(fields, form);
     try {
       if (editingId) {
-        await updateItem(resourceKey, editingId, payload);
+        await updateItem(resourceKey, editingId, toPayload(fields, form));
       } else {
-        await createItem(resourceKey, payload);
+        await createItem(resourceKey, toPayload(fields, form, { omitBlankOptional: true }));
       }
       setForm(emptyForm(fields));
       setEditingId(null);

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ResourcePage from "./ResourcePage";
 import * as api from "../api";
+import { RESOURCES } from "../resourceConfigs";
 
 const fields = [
   { name: "name", label: "Name", type: "text", required: true },
@@ -83,6 +84,37 @@ describe("ResourcePage", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
     await waitFor(() => expect(createSpy).toHaveBeenCalledWith("meal-plan", { name: "Tacos", ingredients: ["beef", "salsa"] }));
+  });
+
+  it("omits blank optional fields from the create payload", async () => {
+    const packages = RESOURCES.find((r) => r.key === "packages");
+    vi.spyOn(api, "listItems").mockResolvedValue([]);
+    const createSpy = vi.spyOn(api, "createItem").mockResolvedValue({ id: 1, tracking_number: "1Z999", carrier: null, status: "unknown" });
+    render(<ResourcePage resourceKey="packages" label="Packages" fields={packages.fields} />);
+
+    await userEvent.type(screen.getByLabelText("Tracking Number"), "1Z999");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => expect(createSpy).toHaveBeenCalledTimes(1));
+    const [, payload] = createSpy.mock.calls[0];
+    expect(payload).toEqual({ tracking_number: "1Z999" });
+    expect(Object.keys(payload)).not.toContain("carrier");
+    expect(Object.keys(payload)).not.toContain("status");
+    expect("carrier" in payload).toBe(false);
+    expect("status" in payload).toBe(false);
+  });
+
+  it("still sends an explicit null on update so a blank optional field is cleared", async () => {
+    vi.spyOn(api, "listItems").mockResolvedValue([{ id: 1, name: "Milk", quantity: "1 gal", checked: false }]);
+    const updateSpy = vi.spyOn(api, "updateItem").mockResolvedValue({ id: 1, name: "Milk", quantity: null, checked: false });
+    render(<ResourcePage resourceKey="groceries" label="Groceries" fields={fields} />);
+
+    await screen.findByText("Milk");
+    await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+    await userEvent.clear(screen.getByLabelText("Quantity"));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(updateSpy).toHaveBeenCalledWith("groceries", 1, { name: "Milk", quantity: null, checked: false }));
   });
 
   it("marks a required textarea field as required", async () => {
