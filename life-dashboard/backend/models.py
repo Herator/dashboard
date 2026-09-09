@@ -25,6 +25,8 @@ class AssignmentStatus(str, Enum):
 
 
 class Event(SQLModel, table=True):
+    __tablename__ = "events"
+
     id: Optional[int] = Field(default=None, primary_key=True)
     source: CalendarSource
     title: str
@@ -55,6 +57,8 @@ class GroceryItem(SQLModel, table=True):
 
 
 class Workout(SQLModel, table=True):
+    __tablename__ = "workouts"
+
     id: Optional[int] = Field(default=None, primary_key=True)
     date: date
     plan_text: str
@@ -62,6 +66,8 @@ class Workout(SQLModel, table=True):
 
 
 class Assignment(SQLModel, table=True):
+    __tablename__ = "assignments"
+
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     course: str
@@ -71,6 +77,8 @@ class Assignment(SQLModel, table=True):
 
 
 class Exam(SQLModel, table=True):
+    __tablename__ = "exams"
+
     id: Optional[int] = Field(default=None, primary_key=True)
     subject: str
     date: date
@@ -78,6 +86,8 @@ class Exam(SQLModel, table=True):
 
 
 class Reminder(SQLModel, table=True):
+    __tablename__ = "reminders"
+
     id: Optional[int] = Field(default=None, primary_key=True)
     text: str
     trigger_time: datetime
@@ -85,6 +95,8 @@ class Reminder(SQLModel, table=True):
 
 
 class Package(SQLModel, table=True):
+    __tablename__ = "packages"
+
     id: Optional[int] = Field(default=None, primary_key=True)
     tracking_number: str
     carrier: Optional[str] = None

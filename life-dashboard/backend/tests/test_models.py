@@ -19,6 +19,28 @@ from backend.models import (
 )
 
 
+# Table names are pinned by the spec (life-dashboard-spec.md section 6). They are
+# not derivable from the class names, so an explicit __tablename__ is required on
+# every model and must not drift.
+EXPECTED_TABLE_NAMES = {
+    Event: "events",
+    MealPlanItem: "meal_plan",
+    GroceryItem: "grocery_items",
+    Workout: "workouts",
+    Assignment: "assignments",
+    Exam: "exams",
+    Reminder: "reminders",
+    Package: "packages",
+    QuickLink: "quick_links",
+}
+
+
+def test_table_names_match_the_spec():
+    actual = {model.__name__: model.__tablename__ for model in EXPECTED_TABLE_NAMES}
+    expected = {model.__name__: name for model, name in EXPECTED_TABLE_NAMES.items()}
+    assert actual == expected
+
+
 def make_test_engine():
     engine = create_engine(
         "sqlite://",
