@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple, Type, TypeVar
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field as PydanticField, create_model
@@ -9,7 +9,9 @@ from backend.database import get_session
 ModelType = TypeVar("ModelType", bound=SQLModel)
 
 
-def _input_model(model: Type[SQLModel], suffix: str, partial: bool) -> Type[BaseModel]:
+def build_input_model(
+    model: Type[SQLModel], suffix: str, partial: bool, include_id: bool = False
+) -> Type[BaseModel]:
     """Build a plain Pydantic model mirroring ``model``'s writable fields.
 
     SQLModel disables Pydantic validation on ``table=True`` classes, so using
@@ -26,8 +28,14 @@ def _input_model(model: Type[SQLModel], suffix: str, partial: bool) -> Type[Base
     is accepted only for columns that are genuinely nullable, and an explicit
     ``null`` for something like ``ingredients: List[str]`` is a 422 instead of a
     NULL written into a non-nullable column.
+
+    ``include_id=True`` prepends an ``id: Optional[int] = None`` field, for
+    callers (the AI-edit endpoints) that need the model to echo back which
+    existing row an item refers to, with ``None``/omitted meaning "new row".
     """
     fields: Dict[str, Tuple[Any, Any]] = {}
+    if include_id:
+        fields["id"] = (Optional[int], None)
     for name, info in model.model_fields.items():
         if name == "id":
             continue
@@ -50,8 +58,8 @@ def make_crud_router(model: Type[ModelType], prefix: str, tag: str) -> APIRouter
     router = APIRouter(prefix=prefix, tags=[tag])
 
     # Built once per router, not per request.
-    CreateSchema = _input_model(model, "Create", partial=False)
-    UpdateSchema = _input_model(model, "Update", partial=True)
+    CreateSchema = build_input_model(model, "Create", partial=False)
+    UpdateSchema = build_input_model(model, "Update", partial=True)
 
     @router.post("", response_model=model, include_in_schema=False)
     @router.post("/", response_model=model)
