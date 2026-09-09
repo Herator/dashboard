@@ -1,0 +1,19 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: #f7f7f8;
+  color: #1a1a1a;
+}
+
+button {
+  cursor: pointer;
+}
+
+.error {
+  color: #b00020;
+  font-weight: 600;
+}

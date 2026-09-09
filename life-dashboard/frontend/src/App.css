@@ -1,0 +1,85 @@
+.home,
+.resource-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.quick-links,
+.section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.quick-link-tile,
+.section-tile {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quick-link-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.quick-link-form input {
+  flex: 1 1 200px;
+  padding: 0.5rem;
+}
+
+.resource-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.resource-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-weight: 600;
+}
+
+.resource-form input,
+.resource-form select,
+.resource-form textarea {
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+.resource-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.resource-table th,
+.resource-table td {
+  border-bottom: 1px solid #eee;
+  padding: 0.5rem;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 480px) {
+  .resource-table {
+    display: block;
+    overflow-x: auto;
+  }
+}
