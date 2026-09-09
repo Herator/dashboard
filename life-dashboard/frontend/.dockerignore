@@ -1,5 +1,7 @@
 node_modules/
 dist/
 .git/
-*.test.jsx
-*.test.js
+**/*.test.jsx
+**/*.test.js
+.env
+.env.local
