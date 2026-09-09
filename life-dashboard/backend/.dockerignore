@@ -5,3 +5,13 @@ __pycache__/
 *.pyc
 .pytest_cache/
 data/*.db
+
+# Secrets — never bake these into the image (see deployment plan)
+.env
+*.env
+**/.env
+**/*.env
+
+# Test suite is not needed in the production image
+tests/
+pytest.ini
