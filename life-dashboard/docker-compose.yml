@@ -1,0 +1,16 @@
+services:
+  life-dashboard-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8000"
+    volumes:
+      # database.py resolves its data dir relative to its own file
+      # location (backend/database.py), which lands at /app/backend/data
+      # inside the image given the Dockerfile's COPY . ./backend layout.
+      - life-dashboard-data:/app/backend/data
+    restart: unless-stopped
+
+volumes:
+  life-dashboard-data:
