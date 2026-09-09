@@ -84,4 +84,12 @@ describe("ResourcePage", () => {
 
     await waitFor(() => expect(createSpy).toHaveBeenCalledWith("meal-plan", { name: "Tacos", ingredients: ["beef", "salsa"] }));
   });
+
+  it("marks a required textarea field as required", async () => {
+    const textareaField = [{ name: "plan_text", label: "Plan", type: "textarea", required: true }];
+    vi.spyOn(api, "listItems").mockResolvedValue([]);
+    render(<ResourcePage resourceKey="workouts" label="Workouts" fields={textareaField} />);
+
+    expect(await screen.findByLabelText("Plan")).toBeRequired();
+  });
 });

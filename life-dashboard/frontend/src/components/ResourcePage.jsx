@@ -145,6 +145,7 @@ export default function ResourcePage({ resourceKey, label, fields }) {
               <textarea
                 id={`field-${field.name}`}
                 value={form[field.name]}
+                required={field.required}
                 onChange={(e) => handleChange(field.name, e.target.value)}
               />
             ) : (
