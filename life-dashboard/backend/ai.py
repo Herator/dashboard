@@ -5,7 +5,7 @@ from typing import List, Optional, Type
 
 import anthropic
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, create_model
+from pydantic import BaseModel, ValidationError, create_model
 from sqlmodel import Session, SQLModel, select
 
 from backend.crud import build_input_model
@@ -96,6 +96,11 @@ def make_ai_edit_router(
             )
         except anthropic.APIError as exc:
             raise HTTPException(status_code=502, detail=f"AI request failed: {exc}")
+        except ValidationError:
+            raise HTTPException(
+                status_code=502,
+                detail="AI response did not match the expected schema.",
+            )
 
         if getattr(response, "stop_reason", None) == "refusal":
             raise HTTPException(

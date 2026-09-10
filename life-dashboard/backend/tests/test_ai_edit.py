@@ -176,3 +176,30 @@ def test_ai_edit_returns_502_on_anthropic_api_error(client, session):
     app.dependency_overrides.pop(get_anthropic_client, None)
 
     assert resp.status_code == 502
+
+
+def test_ai_edit_returns_502_on_schema_invalid_ai_response(client, session):
+    """client.messages.parse()'s post_parser validates the model's JSON text
+    against ResultSchema internally and raises pydantic.ValidationError on a
+    mismatch (e.g. truncated JSON from hitting max_tokens). That error must
+    not propagate as an unhandled 500."""
+    from pydantic import TypeAdapter, ValidationError
+
+    from backend.ai import get_anthropic_client
+
+    try:
+        TypeAdapter(int).validate_python("not an int")
+    except ValidationError as exc:
+        validation_error = exc
+    else:
+        raise AssertionError("expected TypeAdapter(int) to reject a non-int string")
+
+    mock_client = MagicMock()
+    mock_client.messages.parse.side_effect = validation_error
+    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+
+    resp = client.post("/api/meal-plan/ai-edit", json={"message": "anything"})
+
+    app.dependency_overrides.pop(get_anthropic_client, None)
+
+    assert resp.status_code == 502
