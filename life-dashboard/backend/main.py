@@ -40,9 +40,15 @@ app.include_router(
 )
 app.include_router(make_crud_router(GroceryItem, "/api/groceries", "groceries"))
 app.include_router(make_crud_router(Workout, "/api/workouts", "workouts"))
+app.include_router(
+    make_ai_edit_router(Workout, "/api/workouts", "workouts-ai", "workout plan", scope_field="date")
+)
 app.include_router(make_crud_router(Assignment, "/api/assignments", "assignments"))
 app.include_router(make_crud_router(Exam, "/api/exams", "exams"))
 app.include_router(make_crud_router(Reminder, "/api/reminders", "reminders"))
+app.include_router(
+    make_ai_edit_router(Reminder, "/api/reminders", "reminders-ai", "reminders")
+)
 app.include_router(make_crud_router(Package, "/api/packages", "packages"))
 app.include_router(make_crud_router(QuickLink, "/api/quick-links", "quick-links"))
 
