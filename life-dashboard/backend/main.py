@@ -3,6 +3,7 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.ai import make_ai_edit_router
 from backend.crud import make_crud_router
 from backend.database import init_db
 from backend.models import (
@@ -34,6 +35,9 @@ def on_startup():
 
 app.include_router(make_crud_router(Event, "/api/events", "events"))
 app.include_router(make_crud_router(MealPlanItem, "/api/meal-plan", "meal-plan"))
+app.include_router(
+    make_ai_edit_router(MealPlanItem, "/api/meal-plan", "meal-plan-ai", "meal plan", scope_field="date")
+)
 app.include_router(make_crud_router(GroceryItem, "/api/groceries", "groceries"))
 app.include_router(make_crud_router(Workout, "/api/workouts", "workouts"))
 app.include_router(make_crud_router(Assignment, "/api/assignments", "assignments"))
