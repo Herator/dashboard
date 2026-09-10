@@ -49,3 +49,8 @@ export function previewAiEdit(resource, payload) {
 export function applyAiEdit(resource, payload) {
   return request(`/api/${resource}/ai-edit/apply`, { method: "POST", body: JSON.stringify(payload) });
 }
+
+export function syncGroceriesFromMealPlan(weekOf) {
+  const query = weekOf ? `?week_of=${encodeURIComponent(weekOf)}` : "";
+  return request(`/api/groceries/sync-meal-plan${query}`, { method: "POST" });
+}

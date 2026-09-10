@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { listItems, createItem, updateItem, deleteItem } from "../api";
+import { listItems, createItem, updateItem, deleteItem, syncGroceriesFromMealPlan } from "../api";
 import AiEditBox from "./AiEditBox";
 
 function emptyForm(fields) {
@@ -55,6 +55,7 @@ export default function ResourcePage({ resourceKey, label, fields, aiEditable, p
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [syncStatus, setSyncStatus] = useState(null);
 
   async function refresh() {
     setLoading(true);
@@ -115,11 +116,46 @@ export default function ResourcePage({ resourceKey, label, fields, aiEditable, p
     }
   }
 
+  async function handleToggleCheckbox(item, fieldName) {
+    const updated = { ...item, [fieldName]: !item[fieldName] };
+    try {
+      setItems((prev) => prev.map((it) => (it.id === item.id ? updated : it)));
+      await updateItem(
+        resourceKey,
+        item.id,
+        toPayload(fields, toFormValues(fields, updated))
+      );
+    } catch (err) {
+      setError(err.message);
+      await refresh();
+    }
+  }
+
+  async function handleSyncMealPlan() {
+    setError(null);
+    setSyncStatus(null);
+    try {
+      const data = await syncGroceriesFromMealPlan();
+      setSyncStatus(`Added ${data.added.length} item(s) from meal plan.`);
+      await refresh();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   return (
     <div className="resource-page">
       <h1>{label}</h1>
       {aiEditable && (
         <AiEditBox resourceKey={resourceKey} primaryField={primaryField} onApplied={refresh} />
+      )}
+      {resourceKey === "groceries" && (
+        <div className="sync-meal-plan">
+          <button type="button" onClick={handleSyncMealPlan}>
+            Sync from Meal Plan
+          </button>
+          {syncStatus && <p>{syncStatus}</p>}
+        </div>
       )}
       {error && (
         <p className="error" role="alert">
@@ -193,15 +229,20 @@ export default function ResourcePage({ resourceKey, label, fields, aiEditable, p
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.id}>
+              <tr key={item.id} className={item.checked ? "item-checked" : undefined}>
                 {fields.map((field) => (
                   <td key={field.name}>
                     {field.type === "list"
                       ? (item[field.name] || []).join(", ")
                       : field.type === "checkbox"
-                        ? item[field.name]
-                          ? "Yes"
-                          : "No"
+                        ? (
+                          <input
+                            type="checkbox"
+                            aria-label={`Toggle ${field.label} for ${item[fields[0]?.name] || item.title || item.id}`}
+                            checked={!!item[field.name]}
+                            onChange={() => handleToggleCheckbox(item, field.name)}
+                          />
+                        )
                         : String(item[field.name] ?? "")}
                   </td>
                 ))}

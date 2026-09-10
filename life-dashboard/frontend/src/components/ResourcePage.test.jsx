@@ -145,4 +145,40 @@ describe("ResourcePage", () => {
     await screen.findByText("Groceries");
     expect(screen.queryByPlaceholderText(/tell the ai/i)).not.toBeInTheDocument();
   });
+
+  it("toggles checkbox directly in the table row", async () => {
+    vi.spyOn(api, "listItems").mockResolvedValue([
+      { id: 1, name: "Milk", quantity: "1 gal", checked: false },
+    ]);
+    const updateSpy = vi.spyOn(api, "updateItem").mockResolvedValue({
+      id: 1, name: "Milk", quantity: "1 gal", checked: true,
+    });
+
+    render(<ResourcePage resourceKey="groceries" label="Groceries" fields={fields} />);
+    expect(await screen.findByText("Milk")).toBeInTheDocument();
+
+    const tableCheckbox = screen.getByRole("checkbox", { name: /toggle checked/i });
+    expect(tableCheckbox).not.toBeChecked();
+
+    await userEvent.click(tableCheckbox);
+    await waitFor(() =>
+      expect(updateSpy).toHaveBeenCalledWith("groceries", 1, expect.objectContaining({ checked: true }))
+    );
+  });
+
+  it("renders Sync from Meal Plan button and triggers sync for groceries", async () => {
+    vi.spyOn(api, "listItems").mockResolvedValue([]);
+    const syncSpy = vi.spyOn(api, "syncGroceriesFromMealPlan").mockResolvedValue({
+      week_of: "2026-09-07",
+      added: [{ id: 2, name: "Apples" }],
+    });
+
+    render(<ResourcePage resourceKey="groceries" label="Groceries" fields={fields} />);
+    const syncBtn = await screen.findByRole("button", { name: /sync from meal plan/i });
+    expect(syncBtn).toBeInTheDocument();
+
+    await userEvent.click(syncBtn);
+    await waitFor(() => expect(syncSpy).toHaveBeenCalled());
+    expect(await screen.findByText(/added 1 item/i)).toBeInTheDocument();
+  });
 });
