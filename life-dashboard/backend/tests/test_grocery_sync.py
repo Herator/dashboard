@@ -91,3 +91,62 @@ def test_sync_meal_plan_endpoint(client, session: Session):
     body = response.json()
     expected = date.today() - timedelta(days=date.today().weekday())
     assert body["week_of"] == expected.isoformat()
+
+
+def test_create_meal_plan_auto_syncs_groceries(client, session: Session):
+    resp = client.post(
+        "/api/meal-plan/",
+        json={
+            "date": "2026-09-08",
+            "meal_slot": "dinner",
+            "name": "Burger",
+            "ingredients": ["Patty", "Buns"],
+        },
+    )
+    assert resp.status_code == 200  # existing CRUD create returns 200 with the row, not 201
+    groceries = client.get("/api/groceries/").json()
+    names = {g["name"] for g in groceries}
+    assert "Patty" in names
+    assert "Buns" in names
+
+
+def test_update_meal_plan_auto_syncs_new_ingredients(client, session: Session):
+    created = client.post(
+        "/api/meal-plan/",
+        json={
+            "date": "2026-09-08",
+            "meal_slot": "dinner",
+            "name": "Burger",
+            "ingredients": ["Patty"],
+        },
+    ).json()
+    resp = client.put(
+        f"/api/meal-plan/{created['id']}",
+        json={"ingredients": ["Patty", "Cheese"]},
+    )
+    assert resp.status_code == 200
+    groceries = client.get("/api/groceries/").json()
+    names = {g["name"] for g in groceries}
+    assert "Patty" in names
+    assert "Cheese" in names
+
+
+def test_ai_apply_meal_plan_auto_syncs_groceries(client, session: Session):
+    resp = client.post(
+        "/api/meal-plan/ai-edit/apply",
+        json={
+            "items": [
+                {
+                    "date": "2026-09-09",
+                    "meal_slot": "dinner",
+                    "name": "Pizza",
+                    "ingredients": ["Dough", "Mozzarella"],
+                }
+            ]
+        },
+    )
+    assert resp.status_code == 200
+    groceries = client.get("/api/groceries/").json()
+    names = {g["name"] for g in groceries}
+    assert "Dough" in names
+    assert "Mozzarella" in names

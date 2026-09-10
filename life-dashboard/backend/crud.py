@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field as PydanticField, create_model
@@ -54,7 +54,19 @@ def build_input_model(
     return create_model(f"{model.__name__}{suffix}", **fields)
 
 
-def make_crud_router(model: Type[ModelType], prefix: str, tag: str) -> APIRouter:
+def make_crud_router(
+    model: Type[ModelType],
+    prefix: str,
+    tag: str,
+    post_mutation_hook: Optional[Callable[[Session, ModelType], None]] = None,
+) -> APIRouter:
+    """Build a CRUD router for ``model``.
+
+    ``post_mutation_hook(session, item)``, if given, runs after each successful
+    create/update/delete commit (for a delete, ``item`` is the row captured
+    before deletion, so its fields remain readable). Only the meal-plan router
+    passes one, to auto-sync groceries.
+    """
     router = APIRouter(prefix=prefix, tags=[tag])
 
     # Built once per router, not per request.
@@ -68,6 +80,9 @@ def make_crud_router(model: Type[ModelType], prefix: str, tag: str) -> APIRouter
         session.add(row)
         session.commit()
         session.refresh(row)
+        if post_mutation_hook is not None:
+            post_mutation_hook(session, row)
+            session.refresh(row)  # hook's commit expired the row
         return row
 
     @router.get("", response_model=List[model], include_in_schema=False)
@@ -95,6 +110,9 @@ def make_crud_router(model: Type[ModelType], prefix: str, tag: str) -> APIRouter
         session.add(item)
         session.commit()
         session.refresh(item)
+        if post_mutation_hook is not None:
+            post_mutation_hook(session, item)
+            session.refresh(item)  # hook's commit expired the item
         return item
 
     @router.delete("/{item_id}", status_code=204)
@@ -104,6 +122,8 @@ def make_crud_router(model: Type[ModelType], prefix: str, tag: str) -> APIRouter
             raise HTTPException(status_code=404, detail=f"{tag} {item_id} not found")
         session.delete(item)
         session.commit()
+        if post_mutation_hook is not None:
+            post_mutation_hook(session, item)
         return None
 
     return router

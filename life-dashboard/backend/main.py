@@ -8,7 +8,11 @@ from sqlmodel import Session
 from backend.ai import make_ai_edit_router
 from backend.crud import make_crud_router
 from backend.database import get_session, init_db
-from backend.grocery_sync import get_week_start, sync_meal_plan_to_groceries
+from backend.grocery_sync import (
+    get_week_start,
+    sync_meal_plan_to_groceries,
+    sync_week_for_meal,
+)
 from backend.models import (
     Event,
     MealPlanItem,
@@ -39,7 +43,14 @@ def on_startup():
 
 
 app.include_router(make_crud_router(Event, "/api/events", "events"))
-app.include_router(make_crud_router(MealPlanItem, "/api/meal-plan", "meal-plan"))
+app.include_router(
+    make_crud_router(
+        MealPlanItem,
+        "/api/meal-plan",
+        "meal-plan",
+        post_mutation_hook=sync_week_for_meal,
+    )
+)
 app.include_router(
     make_ai_edit_router(MealPlanItem, "/api/meal-plan", "meal-plan-ai", "meal plan", scope_field="date")
 )

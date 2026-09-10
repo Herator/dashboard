@@ -11,6 +11,8 @@ from sqlmodel import Session, SQLModel, select
 
 from backend.crud import build_input_model
 from backend.database import get_session
+from backend.grocery_sync import get_week_start, sync_meal_plan_to_groceries
+from backend.models import MealPlanItem
 
 logger = logging.getLogger(__name__)
 
@@ -262,6 +264,12 @@ def make_ai_edit_router(
     ):
         existing, _ = _scoped_existing(body.date_from, body.date_to, session)
         _, _, _, result_rows = _reconcile(session, existing, body.items, commit=True)
+        if model is MealPlanItem:
+            weeks = {get_week_start(row.date) for row in result_rows}
+            for week in weeks:
+                sync_meal_plan_to_groceries(session, week)
+            for row in result_rows:
+                session.refresh(row)  # sync's commit expired the rows
         return result_rows
 
     return router

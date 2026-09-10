@@ -11,6 +11,13 @@ def get_week_start(d: date) -> date:
     return d - timedelta(days=d.weekday())
 
 
+def sync_week_for_meal(session: Session, meal) -> None:
+    """Sync the groceries for the week of a single meal (CRUD post-mutation hook)."""
+    if meal is None or getattr(meal, "date", None) is None:
+        return
+    sync_meal_plan_to_groceries(session, get_week_start(meal.date))
+
+
 def sync_meal_plan_to_groceries(session: Session, week_start: date) -> List[GroceryItem]:
     """Create GroceryItem rows for meal-plan ingredients missing for ``week_start``'s week.
 
