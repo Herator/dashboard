@@ -1,3 +1,4 @@
+from datetime import date
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -68,3 +69,65 @@ def test_reminders_ai_edit_endpoint_exists_and_is_unscoped(client, session):
     # Unscoped: no date_from/date_to language expected in the system prompt
     call_kwargs = mock_client.messages.parse.call_args.kwargs
     assert "between" not in call_kwargs["system"]
+
+
+def test_workouts_ai_edit_preview_and_apply_round_trip(client, session):
+    from backend.models import Workout
+
+    existing = Workout(date=date(2026, 9, 10), plan_text="5k easy", notes="stretch first")
+    session.add(existing)
+    session.commit()
+    session.refresh(existing)
+
+    updated_item = SimpleNamespace(
+        id=existing.id,
+        model_dump=lambda exclude=None, exclude_unset=False, **kwargs: (
+            {"id": existing.id, "date": date(2026, 9, 10), "plan_text": "5k tempo"}
+            if exclude_unset
+            else {"id": existing.id, "date": date(2026, 9, 10), "plan_text": "5k tempo", "notes": "stretch first"}
+        ),
+    )
+    mock_client = make_mock_client([updated_item])
+    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+
+    preview = client.post(
+        "/api/workouts/ai-edit/preview", json={"message": "make it a tempo run"}
+    ).json()
+
+    app.dependency_overrides.pop(get_anthropic_client, None)
+
+    assert len(preview["updated"]) == 1
+    assert "notes" not in preview["items"][0]
+
+    apply_resp = client.post("/api/workouts/ai-edit/apply", json={"items": preview["items"]})
+    assert apply_resp.status_code == 200
+    body = apply_resp.json()
+    assert body[0]["plan_text"] == "5k tempo"
+    assert body[0]["notes"] == "stretch first"
+
+
+def test_reminders_ai_edit_preview_and_apply_round_trip(client, session):
+    new_item = SimpleNamespace(
+        id=None,
+        model_dump=lambda exclude=None, exclude_unset=False, **kwargs: {
+            "text": "Text her when I leave practice",
+            "trigger_time": "2026-09-10T20:00:00",
+        },
+    )
+    mock_client = make_mock_client([new_item])
+    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+
+    preview = client.post(
+        "/api/reminders/ai-edit/preview",
+        json={"message": "remind me to text her when I leave practice"},
+    ).json()
+
+    app.dependency_overrides.pop(get_anthropic_client, None)
+
+    assert len(preview["created"]) == 1
+
+    apply_resp = client.post("/api/reminders/ai-edit/apply", json={"items": preview["items"]})
+    assert apply_resp.status_code == 200
+    body = apply_resp.json()
+    assert body[0]["text"] == "Text her when I leave practice"
+    assert body[0]["sent"] is False  # model default applied
