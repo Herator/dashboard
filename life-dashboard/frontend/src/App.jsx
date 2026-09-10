@@ -19,6 +19,8 @@ export default function App() {
                 resourceKey={resource.key}
                 label={resource.label}
                 fields={resource.fields}
+                aiEditable={resource.aiEditable}
+                primaryField={resource.primaryField}
               />
             }
           />

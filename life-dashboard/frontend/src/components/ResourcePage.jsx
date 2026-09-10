@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { listItems, createItem, updateItem, deleteItem } from "../api";
+import AiEditBox from "./AiEditBox";
 
 function emptyForm(fields) {
   const form = {};
@@ -48,7 +49,7 @@ function toFormValues(fields, item) {
   return form;
 }
 
-export default function ResourcePage({ resourceKey, label, fields }) {
+export default function ResourcePage({ resourceKey, label, fields, aiEditable, primaryField }) {
   const [items, setItems] = useState([]);
   const [form, setForm] = useState(() => emptyForm(fields));
   const [editingId, setEditingId] = useState(null);
@@ -117,6 +118,9 @@ export default function ResourcePage({ resourceKey, label, fields }) {
   return (
     <div className="resource-page">
       <h1>{label}</h1>
+      {aiEditable && (
+        <AiEditBox resourceKey={resourceKey} primaryField={primaryField} onApplied={refresh} />
+      )}
       {error && (
         <p className="error" role="alert">
           {error}

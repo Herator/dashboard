@@ -83,3 +83,34 @@
     overflow-x: auto;
   }
 }
+
+.ai-edit-box {
+  background: #f0f4ff;
+  border: 1px solid #c7d6ff;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ai-edit-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ai-edit-form input {
+  flex: 1;
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+.ai-edit-preview {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #c7d6ff;
+}
+
+.ai-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}

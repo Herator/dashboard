@@ -124,4 +124,25 @@ describe("ResourcePage", () => {
 
     expect(await screen.findByLabelText("Plan")).toBeRequired();
   });
+
+  it("renders AiEditBox when aiEditable is true", async () => {
+    vi.spyOn(api, "listItems").mockResolvedValue([]);
+    render(
+      <ResourcePage
+        resourceKey="meal-plan"
+        label="Meal Plan"
+        fields={fields}
+        aiEditable={true}
+        primaryField="name"
+      />
+    );
+    expect(await screen.findByPlaceholderText(/tell the ai/i)).toBeInTheDocument();
+  });
+
+  it("does not render AiEditBox when aiEditable is not set", async () => {
+    vi.spyOn(api, "listItems").mockResolvedValue([]);
+    render(<ResourcePage resourceKey="groceries" label="Groceries" fields={fields} />);
+    await screen.findByText("Groceries");
+    expect(screen.queryByPlaceholderText(/tell the ai/i)).not.toBeInTheDocument();
+  });
 });

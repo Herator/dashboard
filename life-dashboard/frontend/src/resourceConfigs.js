@@ -14,6 +14,8 @@ export const RESOURCES = [
   {
     key: "meal-plan",
     label: "Meal Plan",
+    aiEditable: true,
+    primaryField: "name",
     fields: [
       { name: "date", label: "Date", type: "date", required: true },
       { name: "meal_slot", label: "Meal", type: "select", options: ["breakfast", "lunch", "dinner", "snack"], required: true },
@@ -34,6 +36,8 @@ export const RESOURCES = [
   {
     key: "workouts",
     label: "Workouts",
+    aiEditable: true,
+    primaryField: "plan_text",
     fields: [
       { name: "date", label: "Date", type: "date", required: true },
       { name: "plan_text", label: "Plan", type: "textarea", required: true },
@@ -63,6 +67,8 @@ export const RESOURCES = [
   {
     key: "reminders",
     label: "Reminders",
+    aiEditable: true,
+    primaryField: "text",
     fields: [
       { name: "text", label: "Text", type: "text", required: true },
       { name: "trigger_time", label: "Trigger Time", type: "datetime-local", required: true },
