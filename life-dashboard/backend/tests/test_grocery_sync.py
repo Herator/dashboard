@@ -1,0 +1,69 @@
+from datetime import date
+
+from sqlmodel import Session, select
+
+from backend.grocery_sync import get_week_start, sync_meal_plan_to_groceries
+from backend.models import GroceryItem, MealPlanItem, MealSlot
+
+
+def test_get_week_start():
+    assert get_week_start(date(2026, 9, 7)) == date(2026, 9, 7)  # Monday
+    assert get_week_start(date(2026, 9, 10)) == date(2026, 9, 7)  # mid-week
+    assert get_week_start(date(2026, 9, 13)) == date(2026, 9, 7)  # Sunday
+
+
+def test_sync_meal_plan_to_groceries_creates_missing_items(session: Session):
+    week = date(2026, 9, 7)
+    session.add_all(
+        [
+            MealPlanItem(
+                date=date(2026, 9, 9),
+                meal_slot=MealSlot.dinner,
+                name="Stir fry",
+                ingredients=[" chicken ", "soy sauce", ""],
+            ),
+            MealPlanItem(
+                date=date(2026, 9, 11),
+                meal_slot=MealSlot.lunch,
+                name="Soup",
+                ingredients=["chicken", "broccoli"],
+            ),
+        ]
+    )
+    session.commit()
+
+    added = sync_meal_plan_to_groceries(session, week)
+
+    names = {g.name for g in added}
+    assert names == {"chicken", "soy sauce", "broccoli"}
+    assert all(g.week_of == week and not g.checked and g.quantity is None for g in added)
+
+
+def test_sync_meal_plan_preserves_existing_and_checked_items(session: Session):
+    week = date(2026, 9, 14)
+    session.add_all(
+        [
+            MealPlanItem(
+                date=date(2026, 9, 16),
+                meal_slot=MealSlot.dinner,
+                name="Pasta",
+                ingredients=["tomato", "pasta"],
+            ),
+            GroceryItem(name="Tomato", week_of=week, checked=True),
+            GroceryItem(name="Manual add", week_of=week, checked=False),
+        ]
+    )
+    session.commit()
+
+    added = sync_meal_plan_to_groceries(session, week)
+
+    assert [g.name for g in added] == ["pasta"]
+
+    all_items = session.exec(
+        select(GroceryItem).where(GroceryItem.week_of == week)
+    ).all()
+    assert len(all_items) == 3
+    by_name = {g.name: g for g in all_items}
+    assert by_name["Tomato"].checked is True
+    assert by_name["Tomato"].quantity is None  # pre-existing item untouched
+    assert by_name["Manual add"].name == "Manual add"
