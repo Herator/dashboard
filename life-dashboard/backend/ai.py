@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from datetime import date, timedelta
-from typing import List, Optional, Type
+from typing import Any, Dict, List, Optional, Type
 
 import anthropic
 from fastapi import APIRouter, Depends, HTTPException
@@ -60,30 +60,37 @@ def make_ai_edit_router(
         date_from: Optional[date] = None
         date_to: Optional[date] = None
 
-    @router.post("/ai-edit", response_model=List[model])
-    def ai_edit(
-        body: AiEditRequest,
-        session: Session = Depends(get_session),
-        client: anthropic.Anthropic = Depends(get_anthropic_client),
-    ):
+    class ApplyRequest(BaseModel):
+        items: List[ItemSchema]
+        date_from: Optional[date] = None
+        date_to: Optional[date] = None
+
+    class AiEditPreviewResponse(BaseModel):
+        created: List[Dict[str, Any]]
+        updated: List[Dict[str, Any]]
+        deleted: List[Dict[str, Any]]
+        items: List[Dict[str, Any]]
+
+    def _scoped_existing(date_from: Optional[date], date_to: Optional[date], session: Session):
+        """Query the rows this request may see/affect, plus the prompt text
+        describing that scope (empty string when the resource is unscoped)."""
         query = select(model)
         scope_note = ""
         if scope_field:
             default_start, default_end = _current_week_bounds()
-            date_from = body.date_from or default_start
-            date_to = body.date_to or default_end
+            resolved_from = date_from or default_start
+            resolved_to = date_to or default_end
             column = getattr(model, scope_field)
-            query = query.where(column >= date_from, column <= date_to)
+            query = query.where(column >= resolved_from, column <= resolved_to)
             scope_note = (
                 f" You are only shown, and may only affect, entries with "
-                f"{scope_field} between {date_from.isoformat()} and "
-                f"{date_to.isoformat()} inclusive."
+                f"{scope_field} between {resolved_from.isoformat()} and "
+                f"{resolved_to.isoformat()} inclusive."
             )
+        return session.exec(query).all(), scope_note
 
-        existing = session.exec(query).all()
-        existing_ids = {item.id for item in existing}
+    def _ask_claude(client: anthropic.Anthropic, message: str, existing, scope_note: str):
         current_json = [item.model_dump(mode="json") for item in existing]
-
         system_prompt = (
             f"You are the AI editing assistant for the {resource_label} feature of a "
             "personal life dashboard. You will be given the user's current entries as "
@@ -96,7 +103,6 @@ def make_ai_edit_router(
             "create. Only include entries within what you were given — never invent "
             "entries outside that scope." + scope_note
         )
-
         try:
             response = client.messages.parse(
                 model=AI_MODEL_ID,
@@ -107,7 +113,7 @@ def make_ai_edit_router(
                         "role": "user",
                         "content": (
                             f"Current data: {json.dumps(current_json)}\n\n"
-                            f"User request: {body.message}"
+                            f"User request: {message}"
                         ),
                     }
                 ],
@@ -135,31 +141,57 @@ def make_ai_edit_router(
                 status_code=502, detail="AI returned no usable response."
             )
 
-        returned_items = parsed_output.items
+        return parsed_output.items
+
+    def _reconcile(session: Session, existing, returned_items, commit: bool, message: Optional[str] = None):
+        """Shared create/update/delete reconciliation.
+
+        ``commit=False`` (preview) computes exactly the same result but never
+        persists it: creates are never added to the session, deletes are
+        never issued, and updates mutate already-tracked ORM objects only in
+        memory before the session is rolled back. The before/after/created/
+        deleted values returned are plain dict snapshots taken before that
+        rollback, so they are unaffected by it.
+        """
+        existing_by_id = {item.id: item for item in existing}
+        existing_ids = set(existing_by_id)
         returned_ids = {
             item.id
             for item in returned_items
             if item.id is not None and item.id in existing_ids
         }
-
         stale_ids = existing_ids - returned_ids
+
         if stale_ids:
             # Deletions are how the AI expresses "remove this", so a bad
             # response can quietly wipe rows. Leave a paper trail naming what
             # was deleted and which request caused it.
-            logger.warning(
-                "AI-edit deleting %d row(s) from %s: ids=%s (user message: %r)",
-                len(stale_ids),
-                tag,
-                sorted(stale_ids),
-                body.message,
-            )
-        for stale_id in stale_ids:
-            stale_row = session.get(model, stale_id)
-            if stale_row:
-                session.delete(stale_row)
+            if message is not None:
+                logger.warning(
+                    "AI-edit deleting %d row(s) from %s: ids=%s (user message: %r)",
+                    len(stale_ids),
+                    tag,
+                    sorted(stale_ids),
+                    message,
+                )
+            else:
+                logger.warning(
+                    "AI-edit %s %d row(s) from %s: ids=%s",
+                    "deleting" if commit else "would delete",
+                    len(stale_ids),
+                    tag,
+                    sorted(stale_ids),
+                )
 
+        deleted = [existing_by_id[i].model_dump(mode="json") for i in stale_ids]
+        if commit:
+            for stale_id in stale_ids:
+                session.delete(existing_by_id[stale_id])
+
+        created: List[Dict[str, Any]] = []
+        updated: List[Dict[str, Any]] = []
         result_rows = []
+
         for item in returned_items:
             # exclude_unset: the AI-item schema legitimately allows optional
             # fields to be omitted from the model's JSON, and an omitted field
@@ -170,17 +202,66 @@ def make_ai_edit_router(
             # SQLModel field's own default at construction time.
             data = item.model_dump(exclude={"id"}, exclude_unset=True)
             if item.id is not None and item.id in existing_ids:
-                row = session.get(model, item.id)
+                row = existing_by_id[item.id]
+                before = row.model_dump(mode="json")
                 for key, value in data.items():
                     setattr(row, key, value)
+                after = row.model_dump(mode="json")
+                if before != after:
+                    updated.append({"before": before, "after": after})
+                result_rows.append(row)
             else:
                 row = model(**data)
-                session.add(row)
-            result_rows.append(row)
+                if commit:
+                    session.add(row)
+                created.append(row.model_dump(mode="json"))
+                result_rows.append(row)
 
-        session.commit()
-        for row in result_rows:
-            session.refresh(row)
+        if commit:
+            session.commit()
+            for row in result_rows:
+                session.refresh(row)
+        else:
+            session.rollback()
+
+        return created, updated, deleted, result_rows
+
+    @router.post("/ai-edit", response_model=List[model])
+    def ai_edit(
+        body: AiEditRequest,
+        session: Session = Depends(get_session),
+        client: anthropic.Anthropic = Depends(get_anthropic_client),
+    ):
+        existing, scope_note = _scoped_existing(body.date_from, body.date_to, session)
+        returned_items = _ask_claude(client, body.message, existing, scope_note)
+        _, _, _, result_rows = _reconcile(
+            session, existing, returned_items, commit=True, message=body.message
+        )
+        return result_rows
+
+    @router.post("/ai-edit/preview", response_model=AiEditPreviewResponse)
+    def ai_edit_preview(
+        body: AiEditRequest,
+        session: Session = Depends(get_session),
+        client: anthropic.Anthropic = Depends(get_anthropic_client),
+    ):
+        existing, scope_note = _scoped_existing(body.date_from, body.date_to, session)
+        returned_items = _ask_claude(client, body.message, existing, scope_note)
+        created, updated, deleted, _ = _reconcile(session, existing, returned_items, commit=False)
+        items = [
+            item.model_dump(mode="json", exclude_unset=True) for item in returned_items
+        ]
+        return AiEditPreviewResponse(
+            created=created, updated=updated, deleted=deleted, items=items
+        )
+
+    @router.post("/ai-edit/apply", response_model=List[model])
+    def ai_edit_apply(
+        body: ApplyRequest,
+        session: Session = Depends(get_session),
+    ):
+        existing, _ = _scoped_existing(body.date_from, body.date_to, session)
+        _, _, _, result_rows = _reconcile(session, existing, body.items, commit=True)
         return result_rows
 
     return router
