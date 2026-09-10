@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from sqlmodel import Session, select
 
@@ -67,3 +67,27 @@ def test_sync_meal_plan_preserves_existing_and_checked_items(session: Session):
     assert by_name["Tomato"].checked is True
     assert by_name["Tomato"].quantity is None  # pre-existing item untouched
     assert by_name["Manual add"].name == "Manual add"
+
+
+def test_sync_meal_plan_endpoint(client, session: Session):
+    session.add(
+        MealPlanItem(
+            date=date(2026, 9, 8),
+            meal_slot=MealSlot.dinner,
+            name="Pasta",
+            ingredients=["Noodles", "Marinara"],
+        )
+    )
+    session.commit()
+
+    response = client.post("/api/groceries/sync-meal-plan?week_of=2026-09-08")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["week_of"] == "2026-09-07"
+    assert {item["name"] for item in body["added"]} == {"Noodles", "Marinara"}
+
+    response = client.post("/api/groceries/sync-meal-plan")
+    assert response.status_code == 200
+    body = response.json()
+    expected = date.today() - timedelta(days=date.today().weekday())
+    assert body["week_of"] == expected.isoformat()

@@ -1,11 +1,14 @@
 import os
+from datetime import date
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import Session
 
 from backend.ai import make_ai_edit_router
 from backend.crud import make_crud_router
-from backend.database import init_db
+from backend.database import get_session, init_db
+from backend.grocery_sync import get_week_start, sync_meal_plan_to_groceries
 from backend.models import (
     Event,
     MealPlanItem,
@@ -53,6 +56,16 @@ app.include_router(
 )
 app.include_router(make_crud_router(Package, "/api/packages", "packages"))
 app.include_router(make_crud_router(QuickLink, "/api/quick-links", "quick-links"))
+
+
+@app.post("/api/groceries/sync-meal-plan")
+def sync_meal_plan(
+    week_of: date | None = Query(default=None),
+    session: Session = Depends(get_session),
+):
+    week_start = get_week_start(week_of or date.today())
+    added = sync_meal_plan_to_groceries(session, week_start)
+    return {"added": added, "week_of": week_start}
 
 
 @app.get("/health")
