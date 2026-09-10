@@ -41,3 +41,11 @@ export function updateItem(resource, id, data) {
 export function deleteItem(resource, id) {
   return request(`/api/${resource}/${id}`, { method: "DELETE" });
 }
+
+export function previewAiEdit(resource, payload) {
+  return request(`/api/${resource}/ai-edit/preview`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function applyAiEdit(resource, payload) {
+  return request(`/api/${resource}/ai-edit/apply`, { method: "POST", body: JSON.stringify(payload) });
+}
