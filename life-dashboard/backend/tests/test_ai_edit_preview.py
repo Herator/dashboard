@@ -22,7 +22,8 @@ def make_parsed_item(item_id, set_fields, unset_defaults=None):
     unset_defaults = unset_defaults or {}
 
     def model_dump(exclude=None, exclude_unset=False, **kwargs):
-        data = dict(set_fields)
+        data = {"id": item_id}
+        data.update(set_fields)
         if not exclude_unset:
             data.update(unset_defaults)
         for key in exclude or ():
@@ -167,3 +168,110 @@ def test_preview_passes_through_refusal_and_api_error_like_ai_edit(client, sessi
     app.dependency_overrides.pop(get_anthropic_client, None)
 
     assert resp.status_code == 422
+
+
+def test_apply_does_not_call_the_ai(client, session):
+    """apply must be pure DB reconciliation — it should work with no
+    Anthropic client override at all, proving it never calls messages.parse."""
+    resp = client.post(
+        "/api/meal-plan/ai-edit/apply",
+        json={"items": [{"date": "2026-09-10", "meal_slot": "dinner", "name": "Tacos"}]},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 1
+    assert body[0]["name"] == "Tacos"
+
+
+def test_preview_then_apply_round_trip_creates_correctly(client, session):
+    from backend.ai import get_anthropic_client
+
+    new_item = make_parsed_item(
+        None, {"date": date(2026, 9, 10), "meal_slot": "dinner", "name": "Chicken stir fry"},
+        unset_defaults={"ingredients": []},
+    )
+    mock_client = make_mock_anthropic_client([new_item])
+    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+
+    preview = client.post(
+        "/api/meal-plan/ai-edit/preview", json={"message": "add chicken stir fry"}
+    ).json()
+
+    app.dependency_overrides.pop(get_anthropic_client, None)
+
+    apply_resp = client.post("/api/meal-plan/ai-edit/apply", json={"items": preview["items"]})
+
+    assert apply_resp.status_code == 200
+    body = apply_resp.json()
+    assert len(body) == 1
+    assert body[0]["name"] == "Chicken stir fry"
+    assert body[0]["ingredients"] == []  # SQLModel's own default_factory applied
+
+
+def test_preview_then_apply_round_trip_preserves_omitted_optional_fields(client, session):
+    """The exact regression this plan exists to protect: an update that omits
+    an optional field must not wipe it, all the way through preview -> apply."""
+    from backend.ai import get_anthropic_client
+    from backend.models import MealPlanItem, MealSlot
+
+    existing = MealPlanItem(
+        date=date(2026, 9, 10), meal_slot=MealSlot.dinner, name="Old dinner", ingredients=["rice"]
+    )
+    session.add(existing)
+    session.commit()
+    session.refresh(existing)
+
+    updated_item = make_parsed_item(
+        existing.id,
+        {"date": date(2026, 9, 10), "meal_slot": "dinner", "name": "Chicken stir fry"},
+        unset_defaults={"ingredients": ["rice"]},
+    )
+    mock_client = make_mock_anthropic_client([updated_item])
+    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+
+    preview = client.post(
+        "/api/meal-plan/ai-edit/preview", json={"message": "swap for chicken stir fry"}
+    ).json()
+
+    app.dependency_overrides.pop(get_anthropic_client, None)
+
+    # Confirm the round trip actually dropped the unset field before we even
+    # get to apply — this is what makes the test meaningful rather than
+    # trivially passing regardless of whether exclude_unset survived.
+    assert "ingredients" not in preview["items"][0]
+
+    apply_resp = client.post("/api/meal-plan/ai-edit/apply", json={"items": preview["items"]})
+
+    assert apply_resp.status_code == 200
+    body = apply_resp.json()
+    assert body[0]["id"] == existing.id
+    assert body[0]["name"] == "Chicken stir fry"
+    assert body[0]["ingredients"] == ["rice"]  # untouched, survived preview -> apply
+
+
+def test_preview_then_apply_round_trip_deletes_correctly(client, session):
+    from backend.ai import get_anthropic_client
+    from backend.models import MealPlanItem, MealSlot
+
+    existing = MealPlanItem(
+        date=date(2026, 9, 10), meal_slot=MealSlot.lunch, name="Leftover soup", ingredients=[]
+    )
+    session.add(existing)
+    session.commit()
+
+    mock_client = make_mock_anthropic_client([])
+    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+
+    preview = client.post(
+        "/api/meal-plan/ai-edit/preview", json={"message": "remove lunch"}
+    ).json()
+
+    app.dependency_overrides.pop(get_anthropic_client, None)
+
+    assert len(preview["deleted"]) == 1
+
+    apply_resp = client.post("/api/meal-plan/ai-edit/apply", json={"items": preview["items"]})
+
+    assert apply_resp.status_code == 200
+    assert apply_resp.json() == []
+    assert client.get("/api/meal-plan/").json() == []
