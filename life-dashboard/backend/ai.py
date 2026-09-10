@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from datetime import date, timedelta
 from typing import List, Optional, Type
@@ -11,10 +12,28 @@ from sqlmodel import Session, SQLModel, select
 from backend.crud import build_input_model
 from backend.database import get_session
 
-AI_MODEL_ID = os.environ.get("AI_MODEL_ID", "claude-opus-5")
+logger = logging.getLogger(__name__)
+
+# `or` rather than a `.get` default: an env var set to the empty string (which
+# is what copying .env.example verbatim used to produce) is still "set", so a
+# plain default would leave the model id as "" and send that to the API.
+AI_MODEL_ID = os.environ.get("AI_MODEL_ID") or "claude-opus-5"
 
 
 def get_anthropic_client() -> anthropic.Anthropic:
+    """FastAPI dependency yielding an Anthropic client.
+
+    Fails fast with a clear 503 when no API key is configured. Without this,
+    the SDK resolves a missing *or blank* ANTHROPIC_API_KEY to ``None`` and
+    then raises a bare ``TypeError`` from ``_validate_headers`` on the first
+    request — a ``TypeError`` is not an ``anthropic.APIError``, so it would
+    slip past the handler's error handling and surface as an opaque 500.
+    """
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise HTTPException(
+            status_code=503,
+            detail="AI editing is not configured: ANTHROPIC_API_KEY is not set.",
+        )
     return anthropic.Anthropic()
 
 
@@ -107,21 +126,49 @@ def make_ai_edit_router(
                 status_code=422, detail="The AI declined to process this request."
             )
 
-        returned_items = response.parsed_output.items
+        # parsed_output can be None in narrow cases (e.g. an empty content
+        # list) that neither the refusal check nor ValidationError catches;
+        # reading .items off None would be an unhandled 500.
+        parsed_output = getattr(response, "parsed_output", None)
+        if parsed_output is None:
+            raise HTTPException(
+                status_code=502, detail="AI returned no usable response."
+            )
+
+        returned_items = parsed_output.items
         returned_ids = {
             item.id
             for item in returned_items
             if item.id is not None and item.id in existing_ids
         }
 
-        for stale_id in existing_ids - returned_ids:
+        stale_ids = existing_ids - returned_ids
+        if stale_ids:
+            # Deletions are how the AI expresses "remove this", so a bad
+            # response can quietly wipe rows. Leave a paper trail naming what
+            # was deleted and which request caused it.
+            logger.warning(
+                "AI-edit deleting %d row(s) from %s: ids=%s (user message: %r)",
+                len(stale_ids),
+                tag,
+                sorted(stale_ids),
+                body.message,
+            )
+        for stale_id in stale_ids:
             stale_row = session.get(model, stale_id)
             if stale_row:
                 session.delete(stale_row)
 
         result_rows = []
         for item in returned_items:
-            data = item.model_dump(exclude={"id"})
+            # exclude_unset: the AI-item schema legitimately allows optional
+            # fields to be omitted from the model's JSON, and an omitted field
+            # would otherwise come back as its default and overwrite whatever
+            # was stored (e.g. wiping Workout.notes, or resetting Reminder.sent
+            # back to False). Matches the PUT handler's semantics in crud.py.
+            # On the create path, anything omitted here simply falls back to the
+            # SQLModel field's own default at construction time.
+            data = item.model_dump(exclude={"id"}, exclude_unset=True)
             if item.id is not None and item.id in existing_ids:
                 row = session.get(model, item.id)
                 for key, value in data.items():

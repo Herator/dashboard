@@ -22,7 +22,9 @@ app = FastAPI(title="Life Dashboard API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.environ.get("FRONTEND_ORIGIN", "http://localhost:5173")],
+    # `or` rather than a `.get` default: an env var set to the empty string is
+    # still "set", and allow_origins=[""] would block every real origin.
+    allow_origins=[os.environ.get("FRONTEND_ORIGIN") or "http://localhost:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
 )

@@ -43,7 +43,7 @@ def test_reminders_ai_edit_endpoint_exists_and_is_unscoped(client, session):
         text="Text girlfriend when I leave practice",
         trigger_time=datetime(2026, 9, 10, 20, 0),
         sent=False,
-        model_dump=lambda exclude=None: {
+        model_dump=lambda **kwargs: {
             "text": "Text girlfriend when I leave practice",
             "trigger_time": datetime(2026, 9, 10, 20, 0),
             "sent": False,
