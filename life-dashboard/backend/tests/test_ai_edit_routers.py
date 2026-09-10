@@ -24,7 +24,8 @@ def test_workouts_ai_edit_endpoint_exists_and_is_scoped(client, session):
     assert resp.status_code == 200
     call_kwargs = mock_client.messages.parse.call_args.kwargs
     assert "workout" in call_kwargs["system"].lower()
-    assert "date" in call_kwargs["system"]  # scope_note should mention the date field
+    # scope_note is only generated when scope_field is active; assert on its unique text
+    assert "entries with date between" in call_kwargs["system"]
 
 
 def test_reminders_ai_edit_endpoint_exists_and_is_unscoped(client, session):
@@ -62,6 +63,8 @@ def test_reminders_ai_edit_endpoint_exists_and_is_unscoped(client, session):
     body = resp.json()
     assert len(body) == 1
     assert body[0]["text"] == "Text girlfriend when I leave practice"
+    assert body[0]["trigger_time"] == "2026-09-10T20:00:00"
+    assert body[0]["sent"] is False
     # Unscoped: no date_from/date_to language expected in the system prompt
     call_kwargs = mock_client.messages.parse.call_args.kwargs
     assert "between" not in call_kwargs["system"]
