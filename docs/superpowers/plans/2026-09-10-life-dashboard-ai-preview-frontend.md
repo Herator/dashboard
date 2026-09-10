@@ -505,46 +505,18 @@ EOF
 
 **Files:**
 - No changes to `ai.py` — `/ai-edit/apply` was already written in Task 1's rewrite. This task is entirely about proving it works.
-- Create: `life-dashboard/backend/tests/test_ai_edit_apply.py`
+- Modify: `life-dashboard/backend/tests/test_ai_edit_preview.py` — append these tests to the file Task 1 already created (it already defines `make_mock_anthropic_client`/`make_parsed_item`; reuse them, don't redefine).
 
 **Interfaces:**
 - Consumes: `AiEditPreviewResponse`'s `items` field (Task 1) — this task's tests feed a preview response's `items` value directly into an apply request, exactly as the frontend will.
 
+**Note (ponytail simplification, applied while executing this plan):** the plan originally called for a separate `test_ai_edit_apply.py` file with its own copies of the mock helpers. Since Task 1's `test_ai_edit_preview.py` already has them and this task's tests need the exact same doubles, appending here is the same coverage for less duplication. If you're reading this brief before Task 1 has actually landed those helpers, fall back to defining them locally instead of blocking.
+
 - [ ] **Step 1: Write the failing tests**
 
-`life-dashboard/backend/tests/test_ai_edit_apply.py`:
+Append to `life-dashboard/backend/tests/test_ai_edit_preview.py`:
 
 ```python
-from datetime import date
-from types import SimpleNamespace
-from unittest.mock import MagicMock
-
-from backend.database import get_session
-from backend.main import app
-
-
-def make_mock_anthropic_client(parsed_items, stop_reason="end_turn"):
-    mock_client = MagicMock()
-    mock_client.messages.parse.return_value = SimpleNamespace(
-        parsed_output=SimpleNamespace(items=parsed_items), stop_reason=stop_reason
-    )
-    return mock_client
-
-
-def make_parsed_item(item_id, set_fields, unset_defaults=None):
-    unset_defaults = unset_defaults or {}
-
-    def model_dump(exclude=None, exclude_unset=False, **kwargs):
-        data = dict(set_fields)
-        if not exclude_unset:
-            data.update(unset_defaults)
-        for key in exclude or ():
-            data.pop(key, None)
-        return data
-
-    return SimpleNamespace(id=item_id, model_dump=model_dump, **set_fields)
-
-
 def test_apply_does_not_call_the_ai(client, session):
     """apply must be pure DB reconciliation — it should work with no
     Anthropic client override at all, proving it never calls messages.parse."""
@@ -672,7 +644,7 @@ Expected: all tests pass (54 + 4 new = 58).
 
 ```bash
 cd C:/Users/herma/Documents/Home-server
-git add life-dashboard/backend/tests/test_ai_edit_apply.py
+git add life-dashboard/backend/tests/test_ai_edit_preview.py
 git commit -m "$(cat <<'EOF'
 test: prove the preview-then-apply round trip for meal-plan
 
