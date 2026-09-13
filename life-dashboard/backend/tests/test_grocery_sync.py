@@ -131,6 +131,73 @@ def test_update_meal_plan_auto_syncs_new_ingredients(client, session: Session):
     assert "Cheese" in names
 
 
+def test_create_meal_plan_sync_failure_does_not_fail_mutation(
+    client, session: Session, monkeypatch
+):
+    def boom(session_, week):
+        raise RuntimeError("sync failure")
+
+    monkeypatch.setattr("backend.grocery_sync.sync_meal_plan_to_groceries", boom)
+
+    resp = client.post(
+        "/api/meal-plan/",
+        json={
+            "date": "2026-09-08",
+            "meal_slot": "dinner",
+            "name": "Burger",
+            "ingredients": ["Patty", "Buns"],
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "Burger"
+    assert len(session.exec(select(MealPlanItem)).all()) == 1
+
+
+def test_ai_apply_meal_plan_sync_failure_does_not_fail_mutation(
+    client, session: Session, monkeypatch
+):
+    def boom(session_, week):
+        raise RuntimeError("sync failure")
+
+    monkeypatch.setattr("backend.ai.sync_meal_plan_to_groceries", boom)
+
+    resp = client.post(
+        "/api/meal-plan/ai-edit/apply",
+        json={
+            "items": [
+                {
+                    "date": "2026-09-09",
+                    "meal_slot": "dinner",
+                    "name": "Pizza",
+                    "ingredients": ["Dough", "Mozzarella"],
+                }
+            ]
+        },
+    )
+    assert resp.status_code == 200
+    assert [i["name"] for i in resp.json()] == ["Pizza"]
+    assert len(session.exec(select(MealPlanItem)).all()) == 1
+
+
+def test_delete_meal_plan_keeps_existing_groceries(client, session: Session):
+    created = client.post(
+        "/api/meal-plan/",
+        json={
+            "date": "2026-09-08",
+            "meal_slot": "dinner",
+            "name": "Burger",
+            "ingredients": ["Patty"],
+        },
+    ).json()
+    before = {g.name for g in session.exec(select(GroceryItem)).all()}
+
+    resp = client.delete(f"/api/meal-plan/{created['id']}")
+    assert resp.status_code == 204
+
+    after = {g.name for g in session.exec(select(GroceryItem)).all()}
+    assert after == before  # additive: delete must not remove groceries
+
+
 def test_ai_apply_meal_plan_auto_syncs_groceries(client, session: Session):
     resp = client.post(
         "/api/meal-plan/ai-edit/apply",

@@ -267,7 +267,16 @@ def make_ai_edit_router(
         if model is MealPlanItem:
             weeks = {get_week_start(row.date) for row in result_rows}
             for week in weeks:
-                sync_meal_plan_to_groceries(session, week)
+                # The meal-plan mutation already committed in _reconcile; a
+                # sync failure must not turn success into a 500 (the client
+                # would retry and duplicate meals), so log and continue.
+                try:
+                    sync_meal_plan_to_groceries(session, week)
+                except Exception:
+                    logger.exception(
+                        "grocery sync failed for week %s after meal-plan apply; continuing",
+                        week,
+                    )
             for row in result_rows:
                 session.refresh(row)  # sync's commit expired the rows
         return result_rows
