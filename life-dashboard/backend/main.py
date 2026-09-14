@@ -13,11 +13,14 @@ from backend.grocery_sync import (
     sync_meal_plan_to_groceries,
     sync_week_for_meal,
 )
+from backend import weather
+from backend import calendar_feeds
 from backend.models import (
     Event,
     MealPlanItem,
     GroceryItem,
     Workout,
+    WorkoutSchedule,
     Assignment,
     Exam,
     Reminder,
@@ -57,8 +60,30 @@ app.include_router(
 app.include_router(make_crud_router(GroceryItem, "/api/groceries", "groceries"))
 app.include_router(make_crud_router(Workout, "/api/workouts", "workouts"))
 app.include_router(
-    make_ai_edit_router(Workout, "/api/workouts", "workouts-ai", "workout plan", scope_field="date")
+    make_ai_edit_router(
+        Workout,
+        "/api/workouts",
+        "workouts-ai",
+        "workout plan",
+        scope_field="date",
+        extra_instructions=(
+            "When asked for a workout for a given training split (e.g. Push Day, "
+            "Pull Day, Leg Day, Chest Day, Back Day, Shoulder Day, Arm Day, Full "
+            "Body, Cardio), populate `exercises` as a concrete, ordered list "
+            "appropriate to that split — not vague advice. Each exercise needs "
+            "`name`, `sets` (an integer), `reps` (a short string like '8' or "
+            "'8-10' or 'AMRAP'), and `completed` set to a list of `sets` "
+            "`false` values (the user checks these off during the workout — "
+            "never mark any as already done). Default to 5-6 compound-first "
+            "exercises in a sensible order (compounds before isolation) unless "
+            "asked for more or fewer. Also set `plan_text` to a short one-line "
+            "summary (e.g. 'Push Day: Chest, Shoulders, Triceps') — it's shown "
+            "in the log list, so keep it brief rather than listing exercises "
+            "there too."
+        ),
+    )
 )
+app.include_router(make_crud_router(WorkoutSchedule, "/api/workout-schedule", "workout-schedule"))
 app.include_router(make_crud_router(Assignment, "/api/assignments", "assignments"))
 app.include_router(make_crud_router(Exam, "/api/exams", "exams"))
 app.include_router(make_crud_router(Reminder, "/api/reminders", "reminders"))
@@ -67,6 +92,9 @@ app.include_router(
 )
 app.include_router(make_crud_router(Package, "/api/packages", "packages"))
 app.include_router(make_crud_router(QuickLink, "/api/quick-links", "quick-links"))
+app.include_router(weather.router)
+app.include_router(calendar_feeds.crud_router)
+app.include_router(calendar_feeds.events_router)
 
 
 @app.post("/api/groceries/sync-meal-plan")

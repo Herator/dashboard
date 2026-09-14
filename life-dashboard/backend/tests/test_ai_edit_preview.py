@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 from backend.database import get_session
 from backend.main import app
+from backend.models import MealSlot
 
 
 def make_mock_anthropic_client(parsed_items, stop_reason="end_turn"):
@@ -37,7 +38,7 @@ def test_preview_creates_show_up_in_created_and_nothing_is_persisted(client, ses
     from backend.ai import get_anthropic_client
 
     new_item = make_parsed_item(
-        None, {"date": date(2026, 9, 10), "meal_slot": "dinner", "name": "Chicken stir fry"},
+        None, {"date": date(2026, 9, 10), "meal_slot": MealSlot.dinner, "name": "Chicken stir fry"},
         unset_defaults={"ingredients": []},
     )
     mock_client = make_mock_anthropic_client([new_item])
@@ -74,7 +75,7 @@ def test_preview_updates_show_before_and_after_without_persisting(client, sessio
 
     updated_item = make_parsed_item(
         existing.id,
-        {"date": date(2026, 9, 10), "meal_slot": "dinner", "name": "Chicken stir fry"},
+        {"date": date(2026, 9, 10), "meal_slot": MealSlot.dinner, "name": "Chicken stir fry"},
         unset_defaults={"ingredients": ["rice"]},
     )
     mock_client = make_mock_anthropic_client([updated_item])
@@ -144,7 +145,7 @@ def test_preview_no_op_change_is_not_reported_as_updated(client, session):
 
     same_item = make_parsed_item(
         existing.id,
-        {"date": date(2026, 9, 10), "meal_slot": "dinner", "name": "Same dinner", "ingredients": ["rice"]},
+        {"date": date(2026, 9, 10), "meal_slot": MealSlot.dinner, "name": "Same dinner", "ingredients": ["rice"]},
     )
     mock_client = make_mock_anthropic_client([same_item])
     app.dependency_overrides[get_anthropic_client] = lambda: mock_client
@@ -187,7 +188,7 @@ def test_preview_then_apply_round_trip_creates_correctly(client, session):
     from backend.ai import get_anthropic_client
 
     new_item = make_parsed_item(
-        None, {"date": date(2026, 9, 10), "meal_slot": "dinner", "name": "Chicken stir fry"},
+        None, {"date": date(2026, 9, 10), "meal_slot": MealSlot.dinner, "name": "Chicken stir fry"},
         unset_defaults={"ingredients": []},
     )
     mock_client = make_mock_anthropic_client([new_item])
@@ -223,7 +224,7 @@ def test_preview_then_apply_round_trip_preserves_omitted_optional_fields(client,
 
     updated_item = make_parsed_item(
         existing.id,
-        {"date": date(2026, 9, 10), "meal_slot": "dinner", "name": "Chicken stir fry"},
+        {"date": date(2026, 9, 10), "meal_slot": MealSlot.dinner, "name": "Chicken stir fry"},
         unset_defaults={"ingredients": ["rice"]},
     )
     mock_client = make_mock_anthropic_client([updated_item])

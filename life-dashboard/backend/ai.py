@@ -51,6 +51,7 @@ def make_ai_edit_router(
     tag: str,
     resource_label: str,
     scope_field: Optional[str] = None,
+    extra_instructions: str = "",
 ) -> APIRouter:
     router = APIRouter(prefix=prefix, tags=[tag])
 
@@ -103,7 +104,7 @@ def make_ai_edit_router(
             "their `id`), omit entries the request asks to delete, and add new "
             "entries with `id` set to null for anything new the request asks to "
             "create. Only include entries within what you were given — never invent "
-            "entries outside that scope." + scope_note
+            "entries outside that scope." + scope_note + (" " + extra_instructions if extra_instructions else "")
         )
         try:
             response = client.messages.parse(

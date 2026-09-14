@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -27,6 +27,11 @@ def test_workouts_ai_edit_endpoint_exists_and_is_scoped(client, session):
     assert "workout" in call_kwargs["system"].lower()
     # scope_note is only generated when scope_field is active; assert on its unique text
     assert "entries with date between" in call_kwargs["system"]
+    # extra_instructions steers the AI toward concrete exercises for a split,
+    # not vague advice — assert it actually reaches the system prompt.
+    assert "Push Day" in call_kwargs["system"]
+    assert "exercises" in call_kwargs["system"]
+    assert "completed" in call_kwargs["system"]
 
 
 def test_reminders_ai_edit_endpoint_exists_and_is_unscoped(client, session):
@@ -111,7 +116,7 @@ def test_reminders_ai_edit_preview_and_apply_round_trip(client, session):
         id=None,
         model_dump=lambda exclude=None, exclude_unset=False, **kwargs: {
             "text": "Text her when I leave practice",
-            "trigger_time": "2026-09-10T20:00:00",
+            "trigger_time": datetime(2026, 9, 10, 20, 0, 0),
         },
     )
     mock_client = make_mock_client([new_item])

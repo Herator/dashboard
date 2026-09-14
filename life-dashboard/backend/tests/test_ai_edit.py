@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 from backend.database import get_session
 from backend.main import app
+from backend.models import MealSlot
 
 
 def make_mock_anthropic_client(parsed_items, stop_reason="end_turn"):
@@ -51,7 +52,7 @@ def test_ai_edit_creates_a_new_meal_plan_item(client, session):
     new_item = SimpleNamespace(
         id=None,
         date=date(2026, 9, 10),
-        meal_slot="dinner",
+        meal_slot=MealSlot.dinner,
         name="Chicken stir fry",
         ingredients=["chicken", "soy sauce"],
         # **kwargs so the mock tolerates however the handler calls model_dump
@@ -60,7 +61,7 @@ def test_ai_edit_creates_a_new_meal_plan_item(client, session):
         # AI omitted that field.
         model_dump=lambda **kwargs: {
             "date": date(2026, 9, 10),
-            "meal_slot": "dinner",
+            "meal_slot": MealSlot.dinner,
             "name": "Chicken stir fry",
             "ingredients": ["chicken", "soy sauce"],
         },
@@ -101,12 +102,12 @@ def test_ai_edit_updates_an_existing_item_by_id(client, session):
     updated_item = SimpleNamespace(
         id=existing.id,
         date=date(2026, 9, 10),
-        meal_slot="dinner",
+        meal_slot=MealSlot.dinner,
         name="Chicken stir fry",
         ingredients=["chicken"],
         model_dump=lambda **kwargs: {
             "date": date(2026, 9, 10),
-            "meal_slot": "dinner",
+            "meal_slot": MealSlot.dinner,
             "name": "Chicken stir fry",
             "ingredients": ["chicken"],
         },
@@ -376,7 +377,7 @@ def test_ai_edit_create_still_applies_model_defaults_for_omitted_fields(client, 
         None,
         {
             "date": date(2026, 9, 10),
-            "meal_slot": "dinner",
+            "meal_slot": MealSlot.dinner,
             "name": "Chicken stir fry",
         },
         unset_defaults={"ingredients": []},
