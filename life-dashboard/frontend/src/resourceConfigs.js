@@ -43,17 +43,4 @@ export const RESOURCES = [
       { name: "notes", label: "Notes", type: "textarea" },
     ],
   },
-  {
-    key: "assignments",
-    label: "Assignments",
-    icon: "📝",
-    accent: "#a55eea",
-    fields: [
-      { name: "title", label: "Title", type: "text", required: true },
-      { name: "course", label: "Course", type: "text", required: true },
-      { name: "due_date", label: "Due Date", type: "date", required: true },
-      { name: "status", label: "Status", type: "select", options: ["not_started", "in_progress", "done"], required: true },
-      { name: "notes", label: "Notes", type: "textarea" },
-    ],
-  },
 ];

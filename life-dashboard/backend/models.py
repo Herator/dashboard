@@ -64,12 +64,6 @@ class MealSlot(str, Enum):
     snack = "snack"
 
 
-class AssignmentStatus(str, Enum):
-    not_started = "not_started"
-    in_progress = "in_progress"
-    done = "done"
-
-
 class Event(SQLModel, table=True):
     __tablename__ = "events"
 
@@ -137,17 +131,6 @@ class WorkoutSchedule(SQLModel, table=True):
     day_of_week: DayOfWeek
     time: time
     label: str = "Workout"
-    notes: Optional[str] = None
-
-
-class Assignment(SQLModel, table=True):
-    __tablename__ = "assignments"
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    title: str
-    course: str
-    due_date: date
-    status: AssignmentStatus = AssignmentStatus.not_started
     notes: Optional[str] = None
 
 

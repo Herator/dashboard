@@ -21,7 +21,6 @@ from backend.models import (
     GroceryItem,
     Workout,
     WorkoutSchedule,
-    Assignment,
     Exam,
     Reminder,
     Package,
@@ -84,7 +83,6 @@ app.include_router(
     )
 )
 app.include_router(make_crud_router(WorkoutSchedule, "/api/workout-schedule", "workout-schedule"))
-app.include_router(make_crud_router(Assignment, "/api/assignments", "assignments"))
 app.include_router(make_crud_router(Exam, "/api/exams", "exams"))
 app.include_router(make_crud_router(Reminder, "/api/reminders", "reminders"))
 app.include_router(

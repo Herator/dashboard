@@ -5,7 +5,6 @@ RESOURCE_PATHS = [
     "/api/meal-plan/",
     "/api/groceries/",
     "/api/workouts/",
-    "/api/assignments/",
     "/api/exams/",
     "/api/reminders/",
     "/api/packages/",

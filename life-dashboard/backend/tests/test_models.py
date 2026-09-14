@@ -10,8 +10,6 @@ from backend.models import (
     MealSlot,
     GroceryItem,
     Workout,
-    Assignment,
-    AssignmentStatus,
     Exam,
     Reminder,
     Package,
@@ -27,7 +25,6 @@ EXPECTED_TABLE_NAMES = {
     MealPlanItem: "meal_plan",
     GroceryItem: "grocery_items",
     Workout: "workouts",
-    Assignment: "assignments",
     Exam: "exams",
     Reminder: "reminders",
     Package: "packages",
@@ -68,23 +65,17 @@ def test_all_models_round_trip_through_sqlite():
         )
         grocery = GroceryItem(name="Chicken", quantity="2 lb", week_of=date(2026, 9, 8))
         workout = Workout(date=date(2026, 9, 10), plan_text="Rest day")
-        assignment = Assignment(
-            title="Essay 1",
-            course="ENG101",
-            due_date=date(2026, 9, 20),
-            status=AssignmentStatus.not_started,
-        )
         exam = Exam(subject="Calculus", date=date(2026, 10, 1))
         reminder = Reminder(text="Text girlfriend", trigger_time=datetime(2026, 9, 10, 18, 0))
         package = Package(tracking_number="1Z999AA10123456784", carrier="ups")
         link = QuickLink(label="Immich", url="https://photos.example.com")
 
         session.add_all(
-            [event, meal, grocery, workout, assignment, exam, reminder, package, link]
+            [event, meal, grocery, workout, exam, reminder, package, link]
         )
         session.commit()
 
-        for obj in (event, meal, grocery, workout, assignment, exam, reminder, package, link):
+        for obj in (event, meal, grocery, workout, exam, reminder, package, link):
             session.refresh(obj)
             assert obj.id is not None
 

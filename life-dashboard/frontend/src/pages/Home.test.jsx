@@ -21,9 +21,9 @@ describe("Home", () => {
     expect(await screen.findByRole("link", { name: "Meal Plan" })).toHaveAttribute("href", "/meal-plan");
     expect(screen.getByRole("link", { name: "Groceries" })).toHaveAttribute("href", "/groceries");
     expect(screen.getByRole("link", { name: "Workouts" })).toHaveAttribute("href", "/workouts");
-    expect(screen.getByRole("link", { name: "Assignments" })).toHaveAttribute("href", "/assignments");
 
     expect(screen.queryByRole("link", { name: "Calendar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Assignments" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Exams" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Reminders" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Packages" })).not.toBeInTheDocument();
