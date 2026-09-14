@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getWeather } from "../api";
 import { describeWeatherCode } from "../weatherCodes";
+import WeatherIcon from "./WeatherIcon";
 
 const WEEKDAY_FORMAT = { weekday: "short" };
 
@@ -34,23 +35,19 @@ export default function WeatherWidget() {
       {days && (
         <div className="weather-days">
           {days.map((day, i) => {
-            const { icon, label } = describeWeatherCode(day.code);
+            const { shape, label } = describeWeatherCode(day.code);
             const date = new Date(`${day.date}T00:00:00`);
             return (
               <div className="weather-day" key={day.date}>
                 <span className="weather-day-label">
                   {i === 0 ? "Today" : date.toLocaleDateString([], WEEKDAY_FORMAT)}
                 </span>
-                <span className="weather-day-icon" title={label} aria-label={label}>
-                  {icon}
-                </span>
+                <WeatherIcon shape={shape} label={label} />
                 <span className="weather-day-temps">
                   <strong>{Math.round(day.temp_max)}°</strong>{" "}
                   <span className="weather-day-low">{Math.round(day.temp_min)}°</span>
                 </span>
-                {day.precipitation_chance > 0 && (
-                  <span className="weather-day-precip">💧{day.precipitation_chance}%</span>
-                )}
+                <span className="weather-day-precip">{day.precipitation_chance}%</span>
               </div>
             );
           })}

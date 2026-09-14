@@ -1,19 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { RESOURCES } from "../resourceConfigs";
+import TodayHero from "../components/TodayHero";
 import WeatherWidget from "../components/WeatherWidget";
 import CalendarWidget from "../components/CalendarWidget";
 import MealPlanWidget from "../components/MealPlanWidget";
+import ExamCountdownWidget from "../components/ExamCountdownWidget";
 
 // A fixed launcher for the self-hosted Immich instance. Not part of the
 // RESOURCES list: it's an external link, not an internal CRUD page. Styled
-// as its own hero tile (gradient, bigger) rather than folded into the plain
-// section-nav grid, since it's the one external app pinned to the dashboard.
+// as its own hero tile rather than folded into the plain section-nav grid,
+// since it's the one external app pinned to the dashboard.
 const IMMICH_LINK = {
   url: "https://immich.wakiquacki.com/photos",
   icon: "🖼️",
   subtitle: "Photos",
-  gradient: "linear-gradient(135deg, #6c5ce7, #ff6ba8)",
 };
 
 function Clock() {
@@ -54,6 +55,7 @@ export default function Home() {
         <Clock />
       </header>
 
+      <TodayHero />
       <WeatherWidget />
 
       <div className="dashboard-grid">
@@ -63,14 +65,7 @@ export default function Home() {
         </div>
 
         <aside className="dashboard-sidebar">
-          <a
-            href={IMMICH_LINK.url}
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Immich"
-            className="immich-hero"
-            style={{ "--hero-gradient": IMMICH_LINK.gradient }}
-          >
+          <a href={IMMICH_LINK.url} target="_blank" rel="noreferrer" aria-label="Immich" className="immich-hero">
             <span className="immich-hero-icon" aria-hidden="true">
               {IMMICH_LINK.icon}
             </span>
@@ -94,6 +89,7 @@ export default function Home() {
               </Link>
             ))}
           </nav>
+          <ExamCountdownWidget />
         </aside>
       </div>
     </div>

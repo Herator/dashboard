@@ -31,6 +31,16 @@ export default function MealPlanWidget() {
 
   const todayKey = toYMD(new Date());
 
+  // Drop a slot row entirely when nothing's planned in it all week (e.g. no
+  // one plans snacks), rather than showing 7 dimmed "—" cells in a row.
+  const visibleSlots = useMemo(
+    () =>
+      MEAL_SLOTS.filter((slot) =>
+        weekDays.some((day) => byDateAndSlot.has(`${toYMD(day)}_${slot}`))
+      ),
+    [weekDays, byDateAndSlot]
+  );
+
   return (
     <section className="widget meal-plan-widget">
       <div className="widget-header">
@@ -54,14 +64,16 @@ export default function MealPlanWidget() {
             </div>
           );
         })}
-        {MEAL_SLOTS.map((slot) => (
+        {visibleSlots.map((slot) => (
           <Fragment key={slot}>
             <div className="meal-plan-slot-label">{SLOT_LABELS[slot]}</div>
             {weekDays.map((day) => {
               const key = toYMD(day);
               const item = byDateAndSlot.get(`${key}_${slot}`);
+              const classes = ["meal-plan-cell"];
+              if (key === todayKey) classes.push("meal-plan-cell--today");
               return (
-                <div key={`${slot}-${key}`} className="meal-plan-cell">
+                <div key={`${slot}-${key}`} className={classes.join(" ")}>
                   {item ? item.name : <span className="meal-plan-empty">—</span>}
                 </div>
               );

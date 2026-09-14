@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import CalendarWidget from "./CalendarWidget";
 import * as api from "../api";
@@ -40,7 +40,8 @@ describe("CalendarWidget", () => {
     render(<CalendarWidget />);
 
     await userEvent.click(await screen.findByTestId(`calendar-day-${todayStr}`));
-    expect(await screen.findByText("Dentist")).toBeInTheDocument();
+    const agenda = await screen.findByRole("list");
+    expect(within(agenda).getByRole("button", { name: /Dentist/ })).toBeInTheDocument();
   });
 
   it("double-clicking a day opens the add-event form directly", async () => {
@@ -83,7 +84,8 @@ describe("CalendarWidget", () => {
     render(<CalendarWidget />);
 
     await userEvent.click(await screen.findByTestId(`calendar-day-${todayStr}`));
-    await userEvent.click(await screen.findByText("Cancel me"));
+    const agenda = await screen.findByRole("list");
+    await userEvent.click(within(agenda).getByRole("button", { name: /Cancel me/ }));
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
 
     await waitFor(() => expect(deleteSpy).toHaveBeenCalledWith("events", 1));
@@ -121,8 +123,52 @@ describe("CalendarWidget", () => {
     render(<CalendarWidget />);
 
     await userEvent.click(await screen.findByTestId(`calendar-day-${todayStr}`));
-    expect(await screen.findByText(/Strength Training/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Strength Training/, { selector: ".calendar-agenda-title" })
+    ).toBeInTheDocument();
     expect(screen.getByText("Scheduled")).toBeInTheDocument();
+  });
+
+  it("switches between month and week view via the toggle button", async () => {
+    mockListItems({});
+
+    render(<CalendarWidget />);
+
+    const monthCells = (await screen.findAllByTestId(/^calendar-day-/)).length;
+    expect(monthCells).toBeGreaterThan(7);
+
+    await userEvent.click(screen.getByRole("button", { name: "Week" }));
+
+    expect(screen.getAllByTestId(/^calendar-day-/)).toHaveLength(7);
+    expect(screen.getByRole("button", { name: "Month" })).toBeInTheDocument();
+  });
+
+  it("lists a day's events inline under the date in week view", async () => {
+    const todayStr = toYMD(new Date());
+    mockListItems({
+      events: [
+        {
+          id: 1,
+          source: "self",
+          title: "Dentist",
+          start: `${todayStr}T09:00:00`,
+          end: `${todayStr}T10:00:00`,
+          location: null,
+          notes: null,
+          color: "#4a9eff",
+        },
+      ],
+    });
+
+    render(<CalendarWidget />);
+
+    // Month view already shows the title inline on the day cell.
+    expect(await screen.findByText("Dentist")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Week" }));
+
+    // Week view's timeline block shows it too (with its time range).
+    expect(await screen.findByText("Dentist")).toBeInTheDocument();
   });
 
   it("shows a per-feed error when a subscription fails to load", async () => {

@@ -3,18 +3,22 @@
 }
 
 :root {
-  --bg: #12151c;
-  --surface: #1c212b;
-  --surface-2: #242a36;
-  --border: #2f3646;
-  --text: #e8ecf4;
-  --text-dim: #98a2b8;
-  --accent: #4a9eff;
+  /* Cool slate neutrals, no warm/brown tones — see design_handoff_home_dashboard_restyle. */
+  --bg: oklch(0.17 0.012 220);
+  --surface: oklch(0.2 0.013 220);
+  --surface-2: oklch(0.23 0.013 220);
+  --border: oklch(0.3 0.012 220);
+  --text: oklch(0.94 0.008 60);
+  --text-dim: oklch(0.68 0.01 60);
+  --accent: oklch(0.72 0.09 15); /* muted rose: personal events, highlights, Immich */
+  --accent-school: oklch(0.72 0.09 200); /* muted teal: school/deadline events */
+  --accent-rain: oklch(0.72 0.09 220);
+  --font-heading: "Petrona", serif;
 }
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: "Karla", system-ui, -apple-system, "Segoe UI", sans-serif;
   background: var(--bg);
   color: var(--text);
   /* Wall tablet: never bounce-scroll or let a stray double-tap zoom the kiosk. */
@@ -26,6 +30,11 @@ h1,
 h2 {
   font-weight: 600;
   letter-spacing: -0.02em;
+}
+
+h1 {
+  font-family: var(--font-heading);
+  font-weight: 500;
 }
 
 button {
