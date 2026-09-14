@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
+import WorkoutsPage from "./pages/WorkoutsPage";
 import ResourcePage from "./components/ResourcePage";
 import { RESOURCES } from "./resourceConfigs";
 import "./App.css";
@@ -9,7 +10,8 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
-        {RESOURCES.map((resource) => (
+        <Route path="/workouts" element={<WorkoutsPage />} />
+        {RESOURCES.filter((resource) => resource.key !== "workouts").map((resource) => (
           <Route
             key={resource.key}
             path={`/${resource.key}`}

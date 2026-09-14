@@ -2,18 +2,70 @@
   box-sizing: border-box;
 }
 
+:root {
+  --bg: #12151c;
+  --surface: #1c212b;
+  --surface-2: #242a36;
+  --border: #2f3646;
+  --text: #e8ecf4;
+  --text-dim: #98a2b8;
+  --accent: #4a9eff;
+}
+
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  background: #f7f7f8;
-  color: #1a1a1a;
+  background: var(--bg);
+  color: var(--text);
+  /* Wall tablet: never bounce-scroll or let a stray double-tap zoom the kiosk. */
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+h1,
+h2 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 button {
   cursor: pointer;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+  /* 44px is the usual finger-target floor; these get poked, not clicked. */
+  min-height: 44px;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem;
+  min-height: 44px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .error {
-  color: #b00020;
+  color: #ff6b6b;
   font-weight: 600;
 }

@@ -1,19 +1,14 @@
+// Calendar, Exams, Reminders and Packages are intentionally not here: they
+// have no standalone page/nav tile. Calendar is managed directly from the
+// CalendarWidget on Home; Exams, Reminders and Packages are unused and
+// hidden from the UI (their backend routes are untouched, so no data is
+// lost if they come back later).
 export const RESOURCES = [
-  {
-    key: "events",
-    label: "Calendar",
-    fields: [
-      { name: "source", label: "Source", type: "select", options: ["self", "girlfriend", "school"], required: true },
-      { name: "title", label: "Title", type: "text", required: true },
-      { name: "start", label: "Start", type: "datetime-local", required: true },
-      { name: "end", label: "End", type: "datetime-local", required: true },
-      { name: "location", label: "Location", type: "text" },
-      { name: "notes", label: "Notes", type: "textarea" },
-    ],
-  },
   {
     key: "meal-plan",
     label: "Meal Plan",
+    icon: "🍽️",
+    accent: "#ff9f43",
     aiEditable: true,
     primaryField: "name",
     fields: [
@@ -26,6 +21,8 @@ export const RESOURCES = [
   {
     key: "groceries",
     label: "Groceries",
+    icon: "🛒",
+    accent: "#2ed573",
     fields: [
       { name: "name", label: "Name", type: "text", required: true },
       { name: "quantity", label: "Quantity", type: "text" },
@@ -36,6 +33,8 @@ export const RESOURCES = [
   {
     key: "workouts",
     label: "Workouts",
+    icon: "💪",
+    accent: "#ff6b6b",
     aiEditable: true,
     primaryField: "plan_text",
     fields: [
@@ -47,41 +46,14 @@ export const RESOURCES = [
   {
     key: "assignments",
     label: "Assignments",
+    icon: "📝",
+    accent: "#a55eea",
     fields: [
       { name: "title", label: "Title", type: "text", required: true },
       { name: "course", label: "Course", type: "text", required: true },
       { name: "due_date", label: "Due Date", type: "date", required: true },
       { name: "status", label: "Status", type: "select", options: ["not_started", "in_progress", "done"], required: true },
       { name: "notes", label: "Notes", type: "textarea" },
-    ],
-  },
-  {
-    key: "exams",
-    label: "Exams",
-    fields: [
-      { name: "subject", label: "Subject", type: "text", required: true },
-      { name: "date", label: "Date", type: "date", required: true },
-      { name: "notes", label: "Notes", type: "textarea" },
-    ],
-  },
-  {
-    key: "reminders",
-    label: "Reminders",
-    aiEditable: true,
-    primaryField: "text",
-    fields: [
-      { name: "text", label: "Text", type: "text", required: true },
-      { name: "trigger_time", label: "Trigger Time", type: "datetime-local", required: true },
-      { name: "sent", label: "Sent", type: "checkbox" },
-    ],
-  },
-  {
-    key: "packages",
-    label: "Packages",
-    fields: [
-      { name: "tracking_number", label: "Tracking Number", type: "text", required: true },
-      { name: "carrier", label: "Carrier", type: "text" },
-      { name: "status", label: "Status", type: "text" },
     ],
   },
 ];

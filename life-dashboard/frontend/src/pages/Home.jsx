@@ -1,89 +1,101 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { listItems, createItem, deleteItem } from "../api";
 import { RESOURCES } from "../resourceConfigs";
+import WeatherWidget from "../components/WeatherWidget";
+import CalendarWidget from "../components/CalendarWidget";
+import MealPlanWidget from "../components/MealPlanWidget";
 
-export default function Home() {
-  const [links, setLinks] = useState([]);
-  const [label, setLabel] = useState("");
-  const [url, setUrl] = useState("");
-  const [error, setError] = useState(null);
+// A fixed launcher for the self-hosted Immich instance. Not part of the
+// RESOURCES list: it's an external link, not an internal CRUD page. Styled
+// as its own hero tile (gradient, bigger) rather than folded into the plain
+// section-nav grid, since it's the one external app pinned to the dashboard.
+const IMMICH_LINK = {
+  url: "https://immich.wakiquacki.com/photos",
+  icon: "🖼️",
+  subtitle: "Photos",
+  gradient: "linear-gradient(135deg, #6c5ce7, #ff6ba8)",
+};
 
-  async function refresh() {
-    try {
-      const data = await listItems("quick-links");
-      setLinks(data);
-      setError(null);
-    } catch (err) {
-      setError(err.message);
-    }
-  }
+function Clock() {
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    refresh();
+    // Tick on the minute boundary rather than every second: the display only
+    // shows minutes, so a 1s interval is 59 wasted renders out of 60 on a
+    // screen that stays on all day.
+    let timer;
+    function schedule() {
+      timer = setTimeout(() => {
+        setNow(new Date());
+        schedule();
+      }, 60000 - (Date.now() % 60000));
+    }
+    schedule();
+    return () => clearTimeout(timer);
   }, []);
 
-  async function handleAddLink(e) {
-    e.preventDefault();
-    setError(null);
-    try {
-      await createItem("quick-links", { label, url });
-      setLabel("");
-      setUrl("");
-      await refresh();
-    } catch (err) {
-      setError(err.message);
-    }
-  }
+  return (
+    <div className="clock">
+      <time className="clock-time" dateTime={now.toISOString()}>
+        {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+      </time>
+      <span className="clock-date">
+        {now.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" })}
+      </span>
+    </div>
+  );
+}
 
-  async function handleDeleteLink(id) {
-    setError(null);
-    try {
-      await deleteItem("quick-links", id);
-      await refresh();
-    } catch (err) {
-      setError(err.message);
-    }
-  }
-
+export default function Home() {
   return (
     <div className="home">
-      <h1>Life Dashboard</h1>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
+      <header className="home-header">
+        <h1>Life Dashboard</h1>
+        <Clock />
+      </header>
 
-      <section>
-        <h2>Quick Links</h2>
-        <div className="quick-links">
-          {links.map((link) => (
-            <div key={link.id} className="quick-link-tile">
-              <a href={link.url} target="_blank" rel="noreferrer">
-                {link.label}
-              </a>
-              <button onClick={() => handleDeleteLink(link.id)}>Remove</button>
-            </div>
-          ))}
+      <WeatherWidget />
+
+      <div className="dashboard-grid">
+        <div className="dashboard-main">
+          <CalendarWidget />
+          <MealPlanWidget />
         </div>
-        <form onSubmit={handleAddLink} className="quick-link-form">
-          <input placeholder="Label (e.g. Immich)" value={label} required onChange={(e) => setLabel(e.target.value)} />
-          <input placeholder="URL" type="url" value={url} required onChange={(e) => setUrl(e.target.value)} />
-          <button type="submit">Add Link</button>
-        </form>
-      </section>
 
-      <section>
-        <h2>Sections</h2>
-        <nav className="section-nav">
-          {RESOURCES.map((resource) => (
-            <Link key={resource.key} to={`/${resource.key}`} className="section-tile">
-              {resource.label}
-            </Link>
-          ))}
-        </nav>
-      </section>
+        <aside className="dashboard-sidebar">
+          <a
+            href={IMMICH_LINK.url}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Immich"
+            className="immich-hero"
+            style={{ "--hero-gradient": IMMICH_LINK.gradient }}
+          >
+            <span className="immich-hero-icon" aria-hidden="true">
+              {IMMICH_LINK.icon}
+            </span>
+            <span className="immich-hero-text">
+              <span className="immich-hero-title">Immich</span>
+              <span className="immich-hero-subtitle">{IMMICH_LINK.subtitle}</span>
+            </span>
+          </a>
+          <nav className="section-nav section-nav--sidebar">
+            {RESOURCES.map((resource) => (
+              <Link
+                key={resource.key}
+                to={`/${resource.key}`}
+                className="section-tile"
+                style={resource.accent ? { "--accent": resource.accent } : undefined}
+              >
+                <span className="tile-icon" aria-hidden="true">
+                  {resource.icon}
+                </span>
+                {resource.label}
+              </Link>
+            ))}
+          </nav>
+        </aside>
+      </div>
     </div>
   );
 }

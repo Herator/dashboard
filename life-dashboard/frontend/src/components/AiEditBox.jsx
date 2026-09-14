@@ -6,8 +6,8 @@ function describe(item, primaryField) {
   return item[primaryField] ?? `#${item.id ?? "?"}`;
 }
 
-export default function AiEditBox({ resourceKey, primaryField, onApplied }) {
-  const [message, setMessage] = useState("");
+export default function AiEditBox({ resourceKey, primaryField, onApplied, dateFrom, dateTo, initialMessage = "" }) {
+  const [message, setMessage] = useState(initialMessage);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -17,7 +17,7 @@ export default function AiEditBox({ resourceKey, primaryField, onApplied }) {
     setError(null);
     setLoading(true);
     try {
-      const result = await previewAiEdit(resourceKey, { message });
+      const result = await previewAiEdit(resourceKey, { message, date_from: dateFrom, date_to: dateTo });
       setPreview(result);
     } catch (err) {
       setError(err.message);
@@ -30,7 +30,7 @@ export default function AiEditBox({ resourceKey, primaryField, onApplied }) {
     setError(null);
     setLoading(true);
     try {
-      await applyAiEdit(resourceKey, { items: preview.items });
+      await applyAiEdit(resourceKey, { items: preview.items, date_from: dateFrom, date_to: dateTo });
       setPreview(null);
       setMessage("");
       await onApplied();

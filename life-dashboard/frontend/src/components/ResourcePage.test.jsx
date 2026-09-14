@@ -3,7 +3,6 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ResourcePage from "./ResourcePage";
 import * as api from "../api";
-import { RESOURCES } from "../resourceConfigs";
 
 const fields = [
   { name: "name", label: "Name", type: "text", required: true },
@@ -87,10 +86,17 @@ describe("ResourcePage", () => {
   });
 
   it("omits blank optional fields from the create payload", async () => {
-    const packages = RESOURCES.find((r) => r.key === "packages");
+    // Not a real RESOURCES entry (Packages has no page); these fields just
+    // give ResourcePage a required field plus optional ones to exercise the
+    // omit-blank-optional behaviour generically.
+    const packageFields = [
+      { name: "tracking_number", label: "Tracking Number", type: "text", required: true },
+      { name: "carrier", label: "Carrier", type: "text" },
+      { name: "status", label: "Status", type: "text" },
+    ];
     vi.spyOn(api, "listItems").mockResolvedValue([]);
     const createSpy = vi.spyOn(api, "createItem").mockResolvedValue({ id: 1, tracking_number: "1Z999", carrier: null, status: "unknown" });
-    render(<ResourcePage resourceKey="packages" label="Packages" fields={packages.fields} />);
+    render(<ResourcePage resourceKey="packages" label="Packages" fields={packageFields} />);
 
     await userEvent.type(screen.getByLabelText("Tracking Number"), "1Z999");
     await userEvent.click(screen.getByRole("button", { name: "Add" }));

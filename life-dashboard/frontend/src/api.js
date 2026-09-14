@@ -54,3 +54,11 @@ export function syncGroceriesFromMealPlan(weekOf) {
   const query = weekOf ? `?week_of=${encodeURIComponent(weekOf)}` : "";
   return request(`/api/groceries/sync-meal-plan${query}`, { method: "POST" });
 }
+
+export function getWeather() {
+  return request(`/api/weather/`);
+}
+
+export function getExternalEvents(start, end) {
+  return request(`/api/external-events/?start=${start}&end=${end}`);
+}

@@ -1,0 +1,12 @@
+{
+  "name": "life-dashboard-dev",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,green \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:backend": "backend\\.venv\\Scripts\\python.exe -m uvicorn backend.main:app --reload --port 8080 --env-file .env",
+    "dev:frontend": "npm --prefix frontend run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}

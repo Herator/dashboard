@@ -23,6 +23,8 @@ describe("App", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(api, "listItems").mockResolvedValue([]);
+    vi.spyOn(api, "getWeather").mockResolvedValue({ days: [] });
+    vi.spyOn(api, "getExternalEvents").mockResolvedValue({ events: [] });
     window.history.pushState({}, "", "/");
   });
 

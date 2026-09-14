@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Home from "./Home";
 import * as api from "../api";
@@ -8,47 +7,48 @@ import * as api from "../api";
 describe("Home", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-  });
-
-  it("renders quick links returned by the API", async () => {
-    vi.spyOn(api, "listItems").mockResolvedValue([{ id: 1, label: "Immich", url: "https://photos.example.com" }]);
-    render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    );
-    const link = await screen.findByRole("link", { name: "Immich" });
-    expect(link).toHaveAttribute("href", "https://photos.example.com");
-  });
-
-  it("adds a quick link via the form", async () => {
-    vi.spyOn(api, "listItems").mockResolvedValueOnce([]).mockResolvedValueOnce([
-      { id: 1, label: "Router", url: "https://192.168.1.1" },
-    ]);
-    const createSpy = vi.spyOn(api, "createItem").mockResolvedValue({ id: 1, label: "Router", url: "https://192.168.1.1" });
-    render(
-      <MemoryRouter>
-        <Home />
-      </MemoryRouter>
-    );
-
-    await waitFor(() => expect(api.listItems).toHaveBeenCalledTimes(1));
-    await userEvent.type(screen.getByPlaceholderText("Label (e.g. Immich)"), "Router");
-    await userEvent.type(screen.getByPlaceholderText("URL"), "https://192.168.1.1");
-    await userEvent.click(screen.getByRole("button", { name: "Add Link" }));
-
-    await waitFor(() => expect(createSpy).toHaveBeenCalledWith("quick-links", { label: "Router", url: "https://192.168.1.1" }));
-  });
-
-  it("renders a nav link for every resource", async () => {
+    vi.spyOn(api, "getWeather").mockResolvedValue({ days: [] });
+    vi.spyOn(api, "getExternalEvents").mockResolvedValue({ events: [] });
     vi.spyOn(api, "listItems").mockResolvedValue([]);
+  });
+
+  it("renders a nav link for the remaining resources only", async () => {
     render(
       <MemoryRouter>
         <Home />
       </MemoryRouter>
     );
-    expect(await screen.findByRole("link", { name: "Calendar" })).toHaveAttribute("href", "/events");
-    expect(screen.getByRole("link", { name: "Meal Plan" })).toHaveAttribute("href", "/meal-plan");
-    expect(screen.getByRole("link", { name: "Packages" })).toHaveAttribute("href", "/packages");
+    expect(await screen.findByRole("link", { name: "Meal Plan" })).toHaveAttribute("href", "/meal-plan");
+    expect(screen.getByRole("link", { name: "Groceries" })).toHaveAttribute("href", "/groceries");
+    expect(screen.getByRole("link", { name: "Workouts" })).toHaveAttribute("href", "/workouts");
+    expect(screen.getByRole("link", { name: "Assignments" })).toHaveAttribute("href", "/assignments");
+
+    expect(screen.queryByRole("link", { name: "Calendar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Exams" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Reminders" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Packages" })).not.toBeInTheDocument();
+  });
+
+  it("renders the Immich launcher pointing at the configured instance", async () => {
+    render(
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>
+    );
+    expect(await screen.findByRole("link", { name: "Immich" })).toHaveAttribute(
+      "href",
+      "https://immich.wakiquacki.com/photos"
+    );
+  });
+
+  it("renders the weather, calendar and meal-plan widgets", async () => {
+    render(
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>
+    );
+    expect(await screen.findByText("This Week's Weather")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Calendar" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Meal Plan" })).toBeInTheDocument();
   });
 });

@@ -49,7 +49,7 @@ function toFormValues(fields, item) {
   return form;
 }
 
-export default function ResourcePage({ resourceKey, label, fields, aiEditable, primaryField }) {
+export default function ResourcePage({ resourceKey, label, fields, aiEditable, primaryField, hideHeading = false }) {
   const [items, setItems] = useState([]);
   const [form, setForm] = useState(() => emptyForm(fields));
   const [editingId, setEditingId] = useState(null);
@@ -145,7 +145,7 @@ export default function ResourcePage({ resourceKey, label, fields, aiEditable, p
 
   return (
     <div className="resource-page">
-      <h1>{label}</h1>
+      {!hideHeading && <h1>{label}</h1>}
       {aiEditable && (
         <AiEditBox resourceKey={resourceKey} primaryField={primaryField} onApplied={refresh} />
       )}
