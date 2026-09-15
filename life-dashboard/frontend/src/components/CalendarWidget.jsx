@@ -3,7 +3,6 @@ import { listItems, createItem, updateItem, deleteItem, getExternalEvents } from
 import { monthGrid, startOfWeekMonday, addDays, toYMD } from "../dateUtils";
 import { DEFAULT_EVENT_COLOR } from "../eventColors";
 import { RESOURCES } from "../resourceConfigs";
-import { planIcon } from "../workoutPlans";
 import ColorSwatchPicker from "./ColorSwatchPicker";
 
 const WEEKDAY_HEADERS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -270,7 +269,7 @@ export default function CalendarWidget() {
         const key = toYMD(date);
         add(key, {
           kind: "workout",
-          title: `${planIcon(slot.label)} ${slot.label || "Workout"}`,
+          title: `${slot.label || "Workout"}`,
           start: `${key}T${slot.time}`,
           end: `${key}T${slot.time}`,
           color: WORKOUT_COLOR,

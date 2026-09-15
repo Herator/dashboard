@@ -5,7 +5,9 @@ import AiEditBox from "./AiEditBox";
 function emptyForm(fields) {
   const form = {};
   for (const field of fields) {
-    form[field.name] = field.type === "checkbox" ? false : "";
+    // <input type="color"> requires a valid "#rrggbb" value at all times —
+    // "" logs a console warning and the browser silently substitutes black.
+    form[field.name] = field.type === "checkbox" ? false : field.type === "color" ? "#ffffff" : "";
   }
   return form;
 }
@@ -42,6 +44,8 @@ function toFormValues(fields, item) {
     const value = item[field.name];
     if (field.type === "list") {
       form[field.name] = Array.isArray(value) ? value.join(", ") : "";
+    } else if (field.type === "color") {
+      form[field.name] = value || "#ffffff";
     } else {
       form[field.name] = value ?? "";
     }

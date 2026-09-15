@@ -3,7 +3,6 @@ import { getExternalEvents, getWeather, listItems } from "../api";
 import { describeWeatherCode } from "../weatherCodes";
 import { DEFAULT_EVENT_COLOR } from "../eventColors";
 import { addDays, toYMD } from "../dateUtils";
-import { planIcon } from "../workoutPlans";
 import WeatherIcon from "./WeatherIcon";
 
 const MEAL_SLOTS = ["breakfast", "lunch", "dinner"];
@@ -70,7 +69,7 @@ export default function TodayHero() {
             const key = toYMD(date);
             entries.push({
               id: `workout-${slot.id}-${key}`,
-              title: `${planIcon(slot.label)} ${slot.label || "Workout"}`,
+              title: `${slot.label || "Workout"}`,
               start: `${key}T${slot.time}`,
               color: "var(--accent)",
             });

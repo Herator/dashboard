@@ -62,3 +62,13 @@ export function getWeather() {
 export function getExternalEvents(start, end) {
   return request(`/api/external-events/?start=${start}&end=${end}`);
 }
+
+// The camera feed is an <img src> target, not a JSON fetch, so it needs the
+// raw URL rather than going through the `request()` helper.
+export function getPrinterCameraUrl() {
+  return `${API_BASE}/api/printer/camera`;
+}
+
+export function getPrinterStatus() {
+  return request(`/api/printer/status`);
+}

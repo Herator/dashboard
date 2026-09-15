@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { listItems, createItem, updateItem, deleteItem } from "../api";
-import { PLAN_OPTIONS, planIcon, formatTime } from "../workoutPlans";
+import { PLAN_OPTIONS, formatTime } from "../workoutPlans";
 import { nextDateForWeekday, toYMD } from "../dateUtils";
 import AiEditBox from "./AiEditBox";
 
@@ -152,9 +152,6 @@ export default function WorkoutScheduleEditor({ onWorkoutGenerated }) {
                 <span className="workout-day-label">{day.label}</span>
                 {entry ? (
                   <>
-                    <span className="workout-day-icon" aria-hidden="true">
-                      {planIcon(entry.label)}
-                    </span>
                     <span className="workout-day-plan">{entry.label}</span>
                     <span className="workout-day-time">{formatTime(entry.time)}</span>
                   </>

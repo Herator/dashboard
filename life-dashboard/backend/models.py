@@ -189,3 +189,21 @@ class QuickLink(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     label: str
     url: str
+
+
+class FilamentSpool(SQLModel, table=True):
+    """A spool of 3D printer filament you own, tracked manually.
+
+    Separate from anything the printer itself reports: the AMS only knows
+    about filament currently loaded, not spools sitting on a shelf.
+    """
+
+    __tablename__ = "filament_spools"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    material: str
+    color_name: str
+    color_hex: str = "#ffffff"
+    brand: Optional[str] = None
+    weight_total_g: int = 1000
+    notes: Optional[str] = None

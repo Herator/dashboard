@@ -6,6 +6,7 @@ import WeatherWidget from "../components/WeatherWidget";
 import CalendarWidget from "../components/CalendarWidget";
 import MealPlanWidget from "../components/MealPlanWidget";
 import ExamCountdownWidget from "../components/ExamCountdownWidget";
+import PrinterWidget from "../components/PrinterWidget";
 
 // A fixed launcher for the self-hosted Immich instance. Not part of the
 // RESOURCES list: it's an external link, not an internal CRUD page. Styled
@@ -90,6 +91,7 @@ export default function Home() {
             ))}
           </nav>
           <ExamCountdownWidget />
+          <PrinterWidget />
         </aside>
       </div>
     </div>

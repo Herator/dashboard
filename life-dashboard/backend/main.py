@@ -15,6 +15,7 @@ from backend.grocery_sync import (
 )
 from backend import weather
 from backend import calendar_feeds
+from backend import printer
 from backend.models import (
     Event,
     MealPlanItem,
@@ -25,6 +26,7 @@ from backend.models import (
     Reminder,
     Package,
     QuickLink,
+    FilamentSpool,
 )
 
 app = FastAPI(title="Life Dashboard API")
@@ -98,9 +100,11 @@ app.include_router(
 )
 app.include_router(make_crud_router(Package, "/api/packages", "packages"))
 app.include_router(make_crud_router(QuickLink, "/api/quick-links", "quick-links"))
+app.include_router(make_crud_router(FilamentSpool, "/api/filament", "filament"))
 app.include_router(weather.router)
 app.include_router(calendar_feeds.crud_router)
 app.include_router(calendar_feeds.events_router)
+app.include_router(printer.router)
 
 
 @app.post("/api/groceries/sync-meal-plan")

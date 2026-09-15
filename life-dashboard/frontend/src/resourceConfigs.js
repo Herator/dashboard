@@ -43,4 +43,18 @@ export const RESOURCES = [
       { name: "notes", label: "Notes", type: "textarea" },
     ],
   },
+  {
+    key: "filament",
+    label: "Filament",
+    icon: "🧵",
+    accent: "#54a0ff",
+    fields: [
+      { name: "material", label: "Material", type: "text", required: true },
+      { name: "color_name", label: "Color", type: "text", required: true },
+      { name: "color_hex", label: "Swatch", type: "color" },
+      { name: "brand", label: "Brand", type: "text" },
+      { name: "weight_total_g", label: "Weight (g)", type: "number" },
+      { name: "notes", label: "Notes", type: "textarea" },
+    ],
+  },
 ];

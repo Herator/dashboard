@@ -9,6 +9,7 @@ RESOURCE_PATHS = [
     "/api/reminders/",
     "/api/packages/",
     "/api/quick-links/",
+    "/api/filament/",
 ]
 
 
