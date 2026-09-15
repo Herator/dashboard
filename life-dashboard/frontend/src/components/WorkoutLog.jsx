@@ -1,13 +1,18 @@
 import { useEffect, useState } from "react";
 import { listItems, createItem, updateItem, deleteItem } from "../api";
 import AiEditBox from "./AiEditBox";
-
-function setStates(exercise) {
-  return Array.from({ length: exercise.sets }, (_, i) => exercise.completed?.[i] ?? false);
-}
+import { completedStates as setStates, weightStates, actualRepsStates } from "../workoutPlans";
+import { startOfWeekMonday, toYMD, addDays } from "../dateUtils";
+import { getWorkoutSettings } from "../workoutSettings";
 
 function emptyAddForm() {
   return { date: "", plan_text: "", notes: "" };
+}
+
+function workoutsThisWeek(workouts) {
+  const start = toYMD(startOfWeekMonday(new Date()));
+  const end = toYMD(addDays(startOfWeekMonday(new Date()), 6));
+  return workouts.filter((w) => w.date >= start && w.date <= end).length;
 }
 
 export default function WorkoutLog() {
@@ -16,6 +21,17 @@ export default function WorkoutLog() {
   const [error, setError] = useState(null);
   const [addForm, setAddForm] = useState(emptyAddForm());
   const [editing, setEditing] = useState(null); // the workout being edited, or null
+  const [expanded, setExpanded] = useState(() => new Set());
+  const units = getWorkoutSettings().units;
+
+  function toggleExpanded(id) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   function refresh() {
     setLoading(true);
@@ -106,6 +122,19 @@ export default function WorkoutLog() {
         </p>
       )}
 
+      {!loading && workouts.length > 0 && (
+        <div className="workout-log-stats">
+          <div className="workout-stat-card">
+            <span className="workout-stat-value">{workouts.length}</span>
+            <span className="workout-stat-label">Total workouts</span>
+          </div>
+          <div className="workout-stat-card">
+            <span className="workout-stat-value">{workoutsThisWeek(workouts)}</span>
+            <span className="workout-stat-label">This week</span>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleAdd} className="resource-form workout-log-add-form">
         <label>
           Date
@@ -148,19 +177,26 @@ export default function WorkoutLog() {
               (sum, ex) => sum + setStates(ex).filter(Boolean).length,
               0
             );
+            const isOpen = expanded.has(workout.id);
             return (
               <div key={workout.id} className="workout-card">
                 <div className="workout-card-header">
-                  <div>
+                  <button
+                    type="button"
+                    className="workout-card-toggle"
+                    onClick={() => toggleExpanded(workout.id)}
+                    aria-expanded={isOpen}
+                  >
                     <span className="workout-card-date">
                       {new Date(`${workout.date}T00:00:00`).toLocaleDateString([], {
                         weekday: "short",
                         month: "short",
                         day: "numeric",
                       })}
+                      {workout.duration_min ? ` · ${workout.duration_min} min` : ""}
                     </span>
                     <h3 className="workout-card-title">{workout.plan_text}</h3>
-                  </div>
+                  </button>
                   <div className="workout-card-actions">
                     {totalSets > 0 && (
                       <span className="workout-card-progress">
@@ -174,32 +210,50 @@ export default function WorkoutLog() {
                 </div>
 
                 {exercises.length > 0 ? (
-                  <ol className="exercise-list">
-                    {exercises.map((exercise, exerciseIndex) => (
-                      <li key={exerciseIndex} className="exercise-item">
-                        <div className="exercise-info">
-                          <span className="exercise-name">{exercise.name}</span>
-                          <span className="exercise-reps">{exercise.reps} reps</span>
-                        </div>
-                        <div className="exercise-sets">
-                          {setStates(exercise).map((done, setIndex) => (
-                            <label
-                              key={setIndex}
-                              className={`set-checkbox${done ? " set-checkbox--done" : ""}`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={done}
-                                onChange={() => toggleSet(workout, exerciseIndex, setIndex)}
-                                aria-label={`${exercise.name} set ${setIndex + 1}`}
-                              />
-                              <span aria-hidden="true">{setIndex + 1}</span>
-                            </label>
-                          ))}
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
+                  isOpen && (
+                    <ol className="exercise-list">
+                      {exercises.map((exercise, exerciseIndex) => {
+                        const weights = weightStates(exercise);
+                        const actualReps = actualRepsStates(exercise);
+                        return (
+                          <li key={exerciseIndex} className="exercise-item">
+                            <div className="exercise-info">
+                              <span className="exercise-name">{exercise.name}</span>
+                              <span className="exercise-reps">{exercise.reps} reps</span>
+                            </div>
+                            <div className="exercise-sets">
+                              {setStates(exercise).map((done, setIndex) => (
+                                <label
+                                  key={setIndex}
+                                  className={`set-checkbox${done ? " set-checkbox--done" : ""}`}
+                                  title={
+                                    weights[setIndex] != null || actualReps[setIndex] != null
+                                      ? `${actualReps[setIndex] ?? "?"} reps @ ${weights[setIndex] ?? "?"}${units}`
+                                      : undefined
+                                  }
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={done}
+                                    onChange={() => toggleSet(workout, exerciseIndex, setIndex)}
+                                    aria-label={`${exercise.name} set ${setIndex + 1}`}
+                                  />
+                                  <span aria-hidden="true">{setIndex + 1}</span>
+                                </label>
+                              ))}
+                            </div>
+                            {weights.some((w) => w != null) && (
+                              <p className="exercise-weights">
+                                {weights
+                                  .map((w, i) => `${actualReps[i] ?? "–"} × ${w ?? "–"}${units}`)
+                                  .join(", ")}
+                              </p>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  )
                 ) : (
                   workout.notes && <p className="workout-card-notes">{workout.notes}</p>
                 )}

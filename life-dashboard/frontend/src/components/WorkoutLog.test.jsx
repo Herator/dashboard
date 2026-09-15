@@ -25,6 +25,8 @@ describe("WorkoutLog", () => {
 
     render(<WorkoutLog />);
 
+    await userEvent.click(await screen.findByText("Push Day"));
+
     expect(await screen.findByText("Bench Press")).toBeInTheDocument();
     expect(screen.getByText("Overhead Press")).toBeInTheDocument();
 
@@ -45,6 +47,8 @@ describe("WorkoutLog", () => {
     const updateSpy = vi.spyOn(api, "updateItem").mockResolvedValue({});
 
     render(<WorkoutLog />);
+
+    await userEvent.click(await screen.findByText("Push Day"));
 
     const checkbox = await screen.findByLabelText("Bench Press set 1");
     await userEvent.click(checkbox);
@@ -71,6 +75,8 @@ describe("WorkoutLog", () => {
     vi.spyOn(api, "updateItem").mockRejectedValue(new Error("network error"));
 
     render(<WorkoutLog />);
+
+    await userEvent.click(await screen.findByText("Push Day"));
 
     const checkbox = await screen.findByLabelText("Bench Press set 1");
     await userEvent.click(checkbox);

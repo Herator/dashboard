@@ -11,10 +11,20 @@ class Exercise(BaseModel):
     name: str
     sets: int
     reps: str
+    muscle: Optional[str] = None
+    cue: Optional[str] = None
     # One bool per set, tracking whether that set's been done — always
     # `sets` long. The frontend pads/trims defensively rather than trusting
     # this stays in sync (e.g. if `sets` is edited after some were checked).
     completed: List[bool] = Field(default_factory=list)
+    # Actual performed reps/weight per set, filled in by a guided session as
+    # sets are completed. Parallel arrays like `completed` rather than a
+    # per-set object list, for the same defensive pad/trim reason. Old rows
+    # (and old `completed`-only clients) simply lack these keys — the field
+    # default fills them in on read, no migration needed for a nested JSON
+    # blob field.
+    weight: List[Optional[float]] = Field(default_factory=list)
+    actual_reps: List[Optional[str]] = Field(default_factory=list)
 
 
 class ExerciseListType(TypeDecorator):
@@ -114,6 +124,17 @@ class Workout(SQLModel, table=True):
     plan_text: str
     notes: Optional[str] = None
     exercises: List[Exercise] = Field(default_factory=list, sa_column=Column(ExerciseListType))
+    # Library/filter metadata for AI-generated workouts. All optional and
+    # added after the table already existed in deployed DBs — the poor-man's
+    # migration in database.py only ALTER-adds nullable columns, so these
+    # (and `generated`, below) must tolerate a NULL/None value on old rows,
+    # not just default to a non-Optional value.
+    goal: Optional[str] = None
+    duration_min: Optional[int] = None
+    level: Optional[str] = None
+    equipment: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+    muscles: Optional[List[str]] = Field(default=None, sa_column=Column(JSON))
+    generated: Optional[bool] = False
 
 
 class WorkoutSchedule(SQLModel, table=True):
