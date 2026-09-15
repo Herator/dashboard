@@ -25,87 +25,82 @@ export default function WorkoutsPage() {
     setTimeout(() => setToast((current) => (current === message ? null : current)), 3000);
   }
 
-  return (
-    <>
-      <div className="resource-page">
-        <div className="workout-hero">
-          <span className="workout-hero-icon" aria-hidden="true">
-            💪
-          </span>
-          <div>
-            <h1>Workouts</h1>
-            <p className="workout-hero-subtitle">Plan your split, log your sessions.</p>
-          </div>
-        </div>
+  function goToTab(next) {
+    setTab(next);
+    setSelected(null);
+  }
 
-        <div className="workout-tabbar">
+  function exitSession() {
+    setSessionWorkout(null);
+    setSelected(null);
+    bumpRefresh();
+  }
+
+  const screen = sessionWorkout ? "session" : selected ? "detail" : tab;
+
+  return (
+    <div className="workouts-shell">
+      <aside className="workouts-nav">
+        <div className="workouts-nav-brand">
+          <span className="workouts-nav-dot" aria-hidden="true" />
+          <span>Workouts</span>
+        </div>
+        <nav className="workouts-nav-links">
           <button
             type="button"
-            className={`workout-tab${tab === "home" ? " workout-tab--active" : ""}`}
-            onClick={() => setTab("home")}
+            className={`workouts-nav-link${tab === "home" && screen === "home" ? " workouts-nav-link--active" : ""}`}
+            onClick={() => goToTab("home")}
           >
             Home
           </button>
           <button
             type="button"
-            className={`workout-tab${tab === "log" ? " workout-tab--active" : ""}`}
-            onClick={() => setTab("log")}
+            className={`workouts-nav-link${tab === "log" && screen === "log" ? " workouts-nav-link--active" : ""}`}
+            onClick={() => goToTab("log")}
           >
             Log
           </button>
-        </div>
+        </nav>
+      </aside>
 
-        {tab === "home" ? (
-          <>
-            <WorkoutGenerateCard
-              onGenerated={async () => {
-                bumpRefresh();
-                showToast("Workout generated");
-              }}
+      <div className="workouts-main-wrap">
+        {toast && <div className="workout-toast">{toast}</div>}
+
+        <main className="workouts-main">
+          {screen === "session" ? (
+            <WorkoutSession workout={sessionWorkout} onExit={exitSession} onFinish={() => { exitSession(); showToast("Workout logged"); }} />
+          ) : screen === "detail" ? (
+            <WorkoutDetail
+              workout={selected}
+              onBack={() => setSelected(null)}
+              onStart={(workout) => setSessionWorkout(workout)}
             />
-            <h2>Your workouts</h2>
-            <WorkoutLibrary key={refreshKey} onSelect={setSelected} />
-            <p className="widget-empty workout-schedule-hint">
-              Set which days you train and what's on the plan — they show up automatically on the Home
-              calendar.
-            </p>
-            <WorkoutScheduleEditor onWorkoutGenerated={bumpRefresh} />
-          </>
-        ) : (
-          <>
-            <h2>Workout Log</h2>
-            <WorkoutLog key={refreshKey} />
-          </>
-        )}
+          ) : screen === "log" ? (
+            <>
+              <h1>Workout log</h1>
+              <WorkoutLog key={refreshKey} />
+            </>
+          ) : (
+            <>
+              <WorkoutGenerateCard
+                onGenerated={async () => {
+                  bumpRefresh();
+                  showToast("Workout generated");
+                }}
+              />
+              <section>
+                <h4 className="workouts-section-title">Your workouts</h4>
+                <WorkoutLibrary key={refreshKey} onSelect={setSelected} />
+              </section>
+              <p className="widget-empty workout-schedule-hint">
+                Set which days you train and what's on the plan — they show up automatically on the Home
+                calendar.
+              </p>
+              <WorkoutScheduleEditor onWorkoutGenerated={bumpRefresh} />
+            </>
+          )}
+        </main>
       </div>
-
-      {selected && !sessionWorkout && (
-        <WorkoutDetail
-          workout={selected}
-          onBack={() => setSelected(null)}
-          onStart={(workout) => {
-            setSessionWorkout(workout);
-            setSelected(null);
-          }}
-        />
-      )}
-
-      {sessionWorkout && (
-        <WorkoutSession
-          workout={sessionWorkout}
-          onExit={() => {
-            setSessionWorkout(null);
-            bumpRefresh();
-          }}
-          onFinish={() => {
-            setSessionWorkout(null);
-            bumpRefresh();
-            showToast("Workout logged");
-          }}
-        />
-      )}
-
-      {toast && <div className="workout-toast">{toast}</div>}
-    </>
+    </div>
   );
 }

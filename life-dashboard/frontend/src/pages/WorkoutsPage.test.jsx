@@ -9,12 +9,12 @@ describe("WorkoutsPage", () => {
     vi.restoreAllMocks();
   });
 
-  it("renders the hero and the weekly day cards on the Home tab", async () => {
+  it("renders the sidebar nav and the weekly day cards on the Home tab", async () => {
     vi.spyOn(api, "listItems").mockResolvedValue([]);
 
     render(<WorkoutsPage />);
 
-    expect(screen.getByRole("heading", { name: "Workouts" })).toBeInTheDocument();
+    expect(screen.getByText("Workouts")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Weekly Training Schedule" })).toBeInTheDocument();
     // Seven day cards, one per weekday, each an empty "+ Add" slot.
     for (const day of ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]) {
@@ -30,7 +30,7 @@ describe("WorkoutsPage", () => {
 
     await userEvent.click(await screen.findByRole("button", { name: "Log" }));
 
-    expect(screen.getByRole("heading", { name: "Workout Log" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Workout log" })).toBeInTheDocument();
     // The Workout Log's manual add form also renders.
     expect(screen.getByLabelText("Plan")).toBeInTheDocument();
   });

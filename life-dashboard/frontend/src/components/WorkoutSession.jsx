@@ -93,25 +93,11 @@ export default function WorkoutSession({ workout, onExit, onFinish }) {
   const nextExercise = nextStep ? exercises[nextStep.exerciseIndex] : null;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal modal--session">
-        <div className="workout-session-header">
-          <button type="button" className="workout-session-exit" onClick={onExit}>
-            Exit
-          </button>
-          <span className="workout-session-timer">{formatClock(elapsed)}</span>
-          <span className="workout-session-step">
-            Step {stepIndex + 1} of {steps.length}
-          </span>
-        </div>
-
-        <div className="workout-session-progress">
-          <div
-            className="workout-session-progress-fill"
-            style={{ width: `${(stepIndex / steps.length) * 100}%` }}
-          />
-        </div>
-
+    <div className="workout-session">
+      <div className="workout-session-side">
+        <button type="button" className="workout-session-exit" onClick={onExit}>
+          Exit
+        </button>
         <div className="workout-session-strip">
           {exercises.map((exercise, i) => (
             <span
@@ -121,6 +107,25 @@ export default function WorkoutSession({ workout, onExit, onFinish }) {
               {exercise.name}
             </span>
           ))}
+        </div>
+      </div>
+
+      <div className="workout-session-main">
+        <div className="workout-session-header">
+          <h2 className="workout-session-name">{workout.plan_text}</h2>
+          <div className="workout-session-meta">
+            <span className="workout-session-step">
+              Step {stepIndex + 1} of {steps.length}
+            </span>
+            <span className="workout-session-timer">{formatClock(elapsed)}</span>
+          </div>
+        </div>
+
+        <div className="workout-session-progress">
+          <div
+            className="workout-session-progress-fill"
+            style={{ width: `${(stepIndex / steps.length) * 100}%` }}
+          />
         </div>
 
         {error && (
