@@ -514,6 +514,7 @@
 
 .calendar-day {
   min-height: 52px;
+  height: auto;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -526,7 +527,6 @@
   font: inherit;
   padding: 0.3rem 0.35rem;
   text-align: left;
-  overflow: hidden;
 }
 
 .calendar-day:hover {

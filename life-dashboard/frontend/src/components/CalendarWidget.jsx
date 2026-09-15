@@ -460,7 +460,6 @@ export default function CalendarWidget() {
               const classes = ["calendar-day"];
               if (!inMonth) classes.push("calendar-day--outside");
               if (key === todayKey) classes.push("calendar-day--today");
-              const primary = dayItems[0];
               return (
                 <button
                   type="button"
@@ -471,11 +470,11 @@ export default function CalendarWidget() {
                   onDoubleClick={() => openAddForm(key)}
                 >
                   <span className="calendar-day-number">{date.getDate()}</span>
-                  {primary && (
-                    <span className="calendar-day-title" style={{ color: primary.color }}>
-                      {primary.title}
+                  {dayItems.map((item, i) => (
+                    <span key={i} className="calendar-day-title" style={{ color: item.color }}>
+                      {item.title}
                     </span>
-                  )}
+                  ))}
                 </button>
               );
             })}
