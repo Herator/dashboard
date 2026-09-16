@@ -22,7 +22,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: http://localhost:8080
+        # Baked into the built JS at image-build time, so it must be the
+        # browser-facing URL, not a container-internal one. Defaults to
+        # localhost for local/dev use; set PUBLIC_URL in .env for a real
+        # deployment (e.g. https://home.example.com) so the frontend calls
+        # the backend at a URL a phone off the home network can reach.
+        VITE_API_BASE_URL: ${PUBLIC_URL:-http://localhost:8080}
     ports:
       - "5173:80"
     depends_on:
