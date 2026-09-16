@@ -122,3 +122,28 @@ def test_voice_command_reports_updates_and_deletions(client, session):
 
     assert resp.status_code == 200
     assert resp.json() == {"speech": "Updated 1 item in reminders."}
+
+
+def test_voice_command_reports_a_deletion(client, session):
+    from datetime import datetime
+
+    from backend.models import Reminder
+
+    existing = Reminder(text="Old reminder", trigger_time=datetime(2026, 9, 10, 18, 0))
+    session.add(existing)
+    session.commit()
+    session.refresh(existing)
+
+    mock_client = MagicMock()
+    mock_client.messages.parse.side_effect = [
+        _classify_response("reminders"),
+        _edit_response([]),  # AI returned nothing -> existing row is stale -> deleted
+    ]
+    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+
+    resp = client.post("/api/voice-command", json={"message": "delete my old reminder"})
+
+    app.dependency_overrides.pop(get_anthropic_client, None)
+
+    assert resp.status_code == 200
+    assert resp.json() == {"speech": "Removed Old reminder from reminders."}
