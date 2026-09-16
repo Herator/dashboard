@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 
 import anthropic
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, create_model
+from pydantic import BaseModel, ValidationError, create_model
 from sqlmodel import Session
 
 from backend.database import get_session
@@ -57,7 +57,7 @@ def _classify_resource(client: anthropic.Anthropic, message: str) -> Optional[st
             messages=[{"role": "user", "content": message}],
             output_format=_ClassifyResult,
         )
-    except anthropic.APIError:
+    except (anthropic.APIError, ValidationError):
         return None
 
     if getattr(response, "stop_reason", None) == "refusal":
