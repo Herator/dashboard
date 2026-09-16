@@ -13,7 +13,7 @@ from sqlmodel import Session, SQLModel, select
 from backend.crud import build_input_model
 from backend.database import get_session
 from backend.grocery_sync import get_week_start, sync_meal_plan_to_groceries
-from backend.models import MealPlanItem, Reminder, Workout
+from backend.models import Event, FilamentSpool, GroceryItem, MealPlanItem, Reminder, Workout
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +109,13 @@ RESOURCE_REGISTRY: Dict[str, AiEditConfig] = {
         primary_field="plan_text",
     ),
     "reminders": AiEditConfig(Reminder, "reminders", primary_field="text"),
+    "calendar": AiEditConfig(
+        Event, "calendar event", scope_field="start", primary_field="title"
+    ),
+    "groceries": AiEditConfig(
+        GroceryItem, "grocery list", scope_field="week_of", primary_field="name"
+    ),
+    "filament": AiEditConfig(FilamentSpool, "filament spool", primary_field="color_name"),
 }
 
 

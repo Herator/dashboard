@@ -136,3 +136,55 @@ def test_reminders_ai_edit_preview_and_apply_round_trip(client, session):
     body = apply_resp.json()
     assert body[0]["text"] == "Text her when I leave practice"
     assert body[0]["sent"] is False  # model default applied
+
+
+def test_calendar_ai_edit_endpoint_exists_and_is_scoped(client, session):
+    mock_client = make_mock_client([])
+    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+
+    resp = client.post("/api/events/ai-edit", json={"message": "add a tee time Saturday at 9am"})
+
+    app.dependency_overrides.pop(get_anthropic_client, None)
+
+    assert resp.status_code == 200
+    call_kwargs = mock_client.messages.parse.call_args.kwargs
+    assert "calendar event" in call_kwargs["system"].lower()
+    assert "entries with start between" in call_kwargs["system"]
+
+
+def test_filament_ai_edit_endpoint_exists_and_is_unscoped(client, session):
+    mock_client = make_mock_client([])
+    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+
+    resp = client.post("/api/filament/ai-edit", json={"message": "I bought a new spool of black PLA"})
+
+    app.dependency_overrides.pop(get_anthropic_client, None)
+
+    assert resp.status_code == 200
+    call_kwargs = mock_client.messages.parse.call_args.kwargs
+    assert "filament spool" in call_kwargs["system"].lower()
+    assert "between" not in call_kwargs["system"]
+
+
+def test_groceries_ai_edit_creates_a_new_item(client, session):
+    new_item = SimpleNamespace(
+        id=None,
+        model_dump=lambda **kwargs: {
+            "name": "Milk",
+            "quantity": "1 gallon",
+            "checked": False,
+            "week_of": date(2026, 9, 14),
+        },
+    )
+    mock_client = make_mock_client([new_item])
+    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+
+    resp = client.post("/api/groceries/ai-edit", json={"message": "add a gallon of milk"})
+
+    app.dependency_overrides.pop(get_anthropic_client, None)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 1
+    assert body[0]["name"] == "Milk"
+    assert body[0]["checked"] is False
