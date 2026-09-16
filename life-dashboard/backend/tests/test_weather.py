@@ -1,5 +1,5 @@
 from backend.main import app
-from backend.weather import get_http_client, _forecast_cache
+from backend.routers.weather import get_http_client, _forecast_cache
 
 
 def _entry(iso_time, temp, symbol=None, precip_chance=None):

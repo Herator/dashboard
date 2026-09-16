@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { updateItem } from "../api";
-import { completedStates, weightStates, actualRepsStates, sessionSteps } from "../workoutPlans";
-import { getWorkoutSettings } from "../workoutSettings";
+import { updateItem } from "../../lib/api";
+import { completedStates, weightStates, actualRepsStates, sessionSteps } from "../../lib/workoutPlans";
+import { getWorkoutSettings } from "../../lib/workoutSettings";
 
 function formatClock(totalSeconds) {
   const m = Math.floor(totalSeconds / 60);

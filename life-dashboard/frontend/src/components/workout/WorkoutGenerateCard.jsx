@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { previewAiEdit, applyAiEdit } from "../api";
-import { toYMD } from "../dateUtils";
+import { previewAiEdit, applyAiEdit } from "../../lib/api";
+import { toYMD } from "../../lib/dateUtils";
 
 const GOALS = ["Strength", "Hypertrophy", "Endurance", "Cardio"];
 const MUSCLES = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Full body"];

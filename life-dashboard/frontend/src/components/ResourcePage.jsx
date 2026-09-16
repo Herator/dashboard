@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { listItems, createItem, updateItem, deleteItem, syncGroceriesFromMealPlan } from "../api";
+import { listItems, createItem, updateItem, deleteItem, syncGroceriesFromMealPlan } from "../lib/api";
 import AiEditBox from "./AiEditBox";
 
 function emptyForm(fields) {

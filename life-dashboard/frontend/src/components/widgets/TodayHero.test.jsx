@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import TodayHero from "./TodayHero";
-import * as api from "../api";
-import { toYMD } from "../dateUtils";
+import * as api from "../../lib/api";
+import { toYMD } from "../../lib/dateUtils";
 
 describe("TodayHero", () => {
   beforeEach(() => {

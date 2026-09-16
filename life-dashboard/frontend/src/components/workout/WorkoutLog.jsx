@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { listItems, createItem, updateItem, deleteItem } from "../api";
-import AiEditBox from "./AiEditBox";
-import { completedStates as setStates, weightStates, actualRepsStates } from "../workoutPlans";
-import { startOfWeekMonday, toYMD, addDays } from "../dateUtils";
-import { getWorkoutSettings } from "../workoutSettings";
+import { listItems, createItem, updateItem, deleteItem } from "../../lib/api";
+import AiEditBox from "../AiEditBox";
+import { completedStates as setStates, weightStates, actualRepsStates } from "../../lib/workoutPlans";
+import { startOfWeekMonday, toYMD, addDays } from "../../lib/dateUtils";
+import { getWorkoutSettings } from "../../lib/workoutSettings";
 
 function emptyAddForm() {
   return { date: "", plan_text: "", notes: "" };

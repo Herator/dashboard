@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { listItems } from "../api";
+import { listItems } from "../../lib/api";
 
 export default function WorkoutLibrary({ onSelect }) {
   const [workouts, setWorkouts] = useState([]);

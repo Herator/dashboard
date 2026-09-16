@@ -1,4 +1,4 @@
-import { EVENT_COLORS } from "../eventColors";
+import { EVENT_COLORS } from "../lib/eventColors";
 
 export default function ColorSwatchPicker({ value, onChange }) {
   return (

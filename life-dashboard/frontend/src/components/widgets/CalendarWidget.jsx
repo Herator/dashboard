@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { listItems, createItem, updateItem, deleteItem, getExternalEvents } from "../api";
-import { monthGrid, startOfWeekMonday, addDays, toYMD } from "../dateUtils";
-import { DEFAULT_EVENT_COLOR } from "../eventColors";
-import { RESOURCES } from "../resourceConfigs";
-import ColorSwatchPicker from "./ColorSwatchPicker";
+import { listItems, createItem, updateItem, deleteItem, getExternalEvents } from "../../lib/api";
+import { monthGrid, startOfWeekMonday, addDays, toYMD } from "../../lib/dateUtils";
+import { DEFAULT_EVENT_COLOR } from "../../lib/eventColors";
+import { RESOURCES } from "../../resourceConfigs";
+import ColorSwatchPicker from "../ColorSwatchPicker";
 
 const WEEKDAY_HEADERS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const SOURCE_OPTIONS = ["self", "girlfriend", "school"];

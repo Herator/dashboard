@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PrinterWidget from "./PrinterWidget";
-import * as api from "../api";
+import * as api from "../../lib/api";
 
 describe("PrinterWidget", () => {
   beforeEach(() => {

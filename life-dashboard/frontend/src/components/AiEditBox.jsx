@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { previewAiEdit, applyAiEdit } from "../api";
+import { previewAiEdit, applyAiEdit } from "../lib/api";
 
 function describe(item, primaryField) {
   if (!item) return "";

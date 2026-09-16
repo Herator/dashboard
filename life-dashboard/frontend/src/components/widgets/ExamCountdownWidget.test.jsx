@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import ExamCountdownWidget from "./ExamCountdownWidget";
-import * as api from "../api";
-import { addDays, toYMD } from "../dateUtils";
+import * as api from "../../lib/api";
+import { addDays, toYMD } from "../../lib/dateUtils";
 
 describe("ExamCountdownWidget", () => {
   beforeEach(() => {

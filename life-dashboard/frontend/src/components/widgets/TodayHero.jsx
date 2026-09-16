@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { getExternalEvents, getWeather, listItems } from "../api";
-import { describeWeatherCode } from "../weatherCodes";
-import { DEFAULT_EVENT_COLOR } from "../eventColors";
-import { addDays, toYMD } from "../dateUtils";
+import { getExternalEvents, getWeather, listItems } from "../../lib/api";
+import { describeWeatherCode } from "../../lib/weatherCodes";
+import { DEFAULT_EVENT_COLOR } from "../../lib/eventColors";
+import { addDays, toYMD } from "../../lib/dateUtils";
 import WeatherIcon from "./WeatherIcon";
 
 const MEAL_SLOTS = ["breakfast", "lunch", "dinner"];

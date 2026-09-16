@@ -159,7 +159,7 @@ def test_ai_apply_meal_plan_sync_failure_does_not_fail_mutation(
     def boom(session_, week):
         raise RuntimeError("sync failure")
 
-    monkeypatch.setattr("backend.ai.sync_meal_plan_to_groceries", boom)
+    monkeypatch.setattr("backend.routers.ai.sync_meal_plan_to_groceries", boom)
 
     resp = client.post(
         "/api/meal-plan/ai-edit/apply",

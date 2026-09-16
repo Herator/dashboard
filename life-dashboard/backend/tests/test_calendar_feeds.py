@@ -1,4 +1,4 @@
-from backend.calendar_feeds import get_http_client, _feed_cache, _normalize_url
+from backend.routers.calendar_feeds import get_http_client, _feed_cache, _normalize_url
 
 ICS_SINGLE_EVENT = """BEGIN:VCALENDAR
 VERSION:2.0

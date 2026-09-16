@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getPrinterStatus, getPrinterCameraUrl, listItems } from "../api";
+import { getPrinterStatus, getPrinterCameraUrl, listItems } from "../../lib/api";
 
 // A wall-mounted dashboard tile that never closes doesn't need sub-second
 // freshness; this just needs to notice a print finishing within a minute or

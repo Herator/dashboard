@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { RESOURCES } from "../resourceConfigs";
-import TodayHero from "../components/TodayHero";
-import WeatherWidget from "../components/WeatherWidget";
-import CalendarWidget from "../components/CalendarWidget";
-import MealPlanWidget from "../components/MealPlanWidget";
-import ExamCountdownWidget from "../components/ExamCountdownWidget";
-import PrinterWidget from "../components/PrinterWidget";
+import TodayHero from "../components/widgets/TodayHero";
+import WeatherWidget from "../components/widgets/WeatherWidget";
+import CalendarWidget from "../components/widgets/CalendarWidget";
+import MealPlanWidget from "../components/widgets/MealPlanWidget";
+import ExamCountdownWidget from "../components/widgets/ExamCountdownWidget";
+import PrinterWidget from "../components/widgets/PrinterWidget";
 
 // A fixed launcher for the self-hosted Immich instance. Not part of the
 // RESOURCES list: it's an external link, not an internal CRUD page. Styled

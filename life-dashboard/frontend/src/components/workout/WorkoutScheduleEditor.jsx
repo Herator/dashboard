@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { listItems, createItem, updateItem, deleteItem } from "../api";
-import { PLAN_OPTIONS, formatTime } from "../workoutPlans";
-import { nextDateForWeekday, toYMD } from "../dateUtils";
-import AiEditBox from "./AiEditBox";
+import { listItems, createItem, updateItem, deleteItem } from "../../lib/api";
+import { PLAN_OPTIONS, formatTime } from "../../lib/workoutPlans";
+import { nextDateForWeekday, toYMD } from "../../lib/dateUtils";
+import AiEditBox from "../AiEditBox";
 
 const DAYS = [
   { key: "mon", label: "Mon" },

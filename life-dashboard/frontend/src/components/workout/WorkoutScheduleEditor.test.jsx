@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import WorkoutScheduleEditor from "./WorkoutScheduleEditor";
-import * as api from "../api";
-import { toYMD } from "../dateUtils";
+import * as api from "../../lib/api";
+import { toYMD } from "../../lib/dateUtils";
 
 const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 const today = new Date();

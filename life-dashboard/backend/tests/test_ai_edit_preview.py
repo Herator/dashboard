@@ -35,7 +35,7 @@ def make_parsed_item(item_id, set_fields, unset_defaults=None):
 
 
 def test_preview_creates_show_up_in_created_and_nothing_is_persisted(client, session):
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
 
     new_item = make_parsed_item(
         None, {"date": date(2026, 9, 10), "meal_slot": MealSlot.dinner, "name": "Chicken stir fry"},
@@ -63,7 +63,7 @@ def test_preview_creates_show_up_in_created_and_nothing_is_persisted(client, ses
 
 
 def test_preview_updates_show_before_and_after_without_persisting(client, session):
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
     from backend.models import MealPlanItem, MealSlot
 
     existing = MealPlanItem(
@@ -104,7 +104,7 @@ def test_preview_updates_show_before_and_after_without_persisting(client, sessio
 
 
 def test_preview_deletions_show_up_without_persisting(client, session):
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
     from backend.models import MealPlanItem, MealSlot
 
     existing = MealPlanItem(
@@ -133,7 +133,7 @@ def test_preview_deletions_show_up_without_persisting(client, session):
 def test_preview_no_op_change_is_not_reported_as_updated(client, session):
     """If the AI echoes an item back completely unchanged, it shouldn't show
     up in `updated` — that list is for genuinely different before/after."""
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
     from backend.models import MealPlanItem, MealSlot
 
     existing = MealPlanItem(
@@ -159,7 +159,7 @@ def test_preview_no_op_change_is_not_reported_as_updated(client, session):
 
 
 def test_preview_passes_through_refusal_and_api_error_like_ai_edit(client, session):
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
 
     mock_client = make_mock_anthropic_client([], stop_reason="refusal")
     app.dependency_overrides[get_anthropic_client] = lambda: mock_client
@@ -185,7 +185,7 @@ def test_apply_does_not_call_the_ai(client, session):
 
 
 def test_preview_then_apply_round_trip_creates_correctly(client, session):
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
 
     new_item = make_parsed_item(
         None, {"date": date(2026, 9, 10), "meal_slot": MealSlot.dinner, "name": "Chicken stir fry"},
@@ -212,7 +212,7 @@ def test_preview_then_apply_round_trip_creates_correctly(client, session):
 def test_preview_then_apply_round_trip_preserves_omitted_optional_fields(client, session):
     """The exact regression this plan exists to protect: an update that omits
     an optional field must not wipe it, all the way through preview -> apply."""
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
     from backend.models import MealPlanItem, MealSlot
 
     existing = MealPlanItem(
@@ -251,7 +251,7 @@ def test_preview_then_apply_round_trip_preserves_omitted_optional_fields(client,
 
 
 def test_preview_then_apply_round_trip_deletes_correctly(client, session):
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
     from backend.models import MealPlanItem, MealSlot
 
     existing = MealPlanItem(

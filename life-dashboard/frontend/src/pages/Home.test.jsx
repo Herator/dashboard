@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Home from "./Home";
-import * as api from "../api";
+import * as api from "../lib/api";
 
 describe("Home", () => {
   beforeEach(() => {

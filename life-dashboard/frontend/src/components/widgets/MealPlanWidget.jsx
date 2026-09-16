@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { listItems } from "../api";
-import { startOfWeekMonday, addDays, toYMD } from "../dateUtils";
+import { listItems } from "../../lib/api";
+import { startOfWeekMonday, addDays, toYMD } from "../../lib/dateUtils";
 
 const MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
 const SLOT_LABELS = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack" };

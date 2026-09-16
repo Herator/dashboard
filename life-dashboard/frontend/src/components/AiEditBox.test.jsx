@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import AiEditBox from "./AiEditBox";
-import * as api from "../api";
+import * as api from "../lib/api";
 
 describe("AiEditBox", () => {
   beforeEach(() => {

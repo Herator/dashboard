@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import WeatherWidget from "./WeatherWidget";
-import * as api from "../api";
+import * as api from "../../lib/api";
 
 describe("WeatherWidget", () => {
   beforeEach(() => {

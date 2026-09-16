@@ -1,10 +1,10 @@
 import { useState } from "react";
-import WorkoutScheduleEditor from "../components/WorkoutScheduleEditor";
-import WorkoutLog from "../components/WorkoutLog";
-import WorkoutGenerateCard from "../components/WorkoutGenerateCard";
-import WorkoutLibrary from "../components/WorkoutLibrary";
-import WorkoutDetail from "../components/WorkoutDetail";
-import WorkoutSession from "../components/WorkoutSession";
+import WorkoutScheduleEditor from "../components/workout/WorkoutScheduleEditor";
+import WorkoutLog from "../components/workout/WorkoutLog";
+import WorkoutGenerateCard from "../components/workout/WorkoutGenerateCard";
+import WorkoutLibrary from "../components/workout/WorkoutLibrary";
+import WorkoutDetail from "../components/workout/WorkoutDetail";
+import WorkoutSession from "../components/workout/WorkoutSession";
 
 export default function WorkoutsPage() {
   const [tab, setTab] = useState("home");

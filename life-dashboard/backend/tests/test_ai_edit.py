@@ -45,7 +45,7 @@ def make_parsed_item(item_id, set_fields, unset_defaults=None):
 
 
 def test_ai_edit_creates_a_new_meal_plan_item(client, session):
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
 
     # ItemSchema instances are duck-typed here via SimpleNamespace with the
     # fields the endpoint reads: id, date, meal_slot, name, ingredients.
@@ -89,7 +89,7 @@ def test_ai_edit_creates_a_new_meal_plan_item(client, session):
 
 
 def test_ai_edit_updates_an_existing_item_by_id(client, session):
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
     from backend.models import MealPlanItem, MealSlot
 
     existing = MealPlanItem(
@@ -130,7 +130,7 @@ def test_ai_edit_updates_an_existing_item_by_id(client, session):
 
 
 def test_ai_edit_deletes_items_omitted_from_the_response(client, session):
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
     from backend.models import MealPlanItem, MealSlot
 
     to_delete = MealPlanItem(
@@ -158,7 +158,7 @@ def test_ai_edit_deletes_items_omitted_from_the_response(client, session):
 
 
 def test_ai_edit_scopes_to_the_requested_date_range(client, session):
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
     from backend.models import MealPlanItem, MealSlot
 
     in_scope = MealPlanItem(
@@ -195,7 +195,7 @@ def test_ai_edit_scopes_to_the_requested_date_range(client, session):
 def test_ai_edit_returns_502_on_anthropic_api_error(client, session):
     import anthropic
 
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
 
     mock_client = MagicMock()
     mock_client.messages.parse.side_effect = anthropic.APIConnectionError(request=MagicMock())
@@ -215,7 +215,7 @@ def test_ai_edit_returns_502_on_schema_invalid_ai_response(client, session):
     not propagate as an unhandled 500."""
     from pydantic import TypeAdapter, ValidationError
 
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
 
     try:
         TypeAdapter(int).validate_python("not an int")
@@ -236,7 +236,7 @@ def test_ai_edit_returns_502_on_schema_invalid_ai_response(client, session):
 
 
 def test_ai_edit_returns_422_when_the_ai_refuses(client, session):
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
 
     mock_client = make_mock_anthropic_client([], stop_reason="refusal")
     app.dependency_overrides[get_anthropic_client] = lambda: mock_client
@@ -253,7 +253,7 @@ def test_ai_edit_returns_502_when_parsed_output_is_none(client, session):
     """parsed_output can be None in edge cases (e.g. an empty content list)
     that neither the refusal check nor ValidationError catches. Reading
     .items off None would be an AttributeError -> unhandled 500."""
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
 
     mock_client = MagicMock()
     mock_client.messages.parse.return_value = SimpleNamespace(
@@ -274,7 +274,7 @@ def test_ai_edit_returns_503_when_no_api_key_is_configured(client, session, monk
     so a missing key surfaces as a clear 503 instead of the bare TypeError the
     SDK raises (which is not an anthropic.APIError and would be a 500)."""
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
 
     assert get_anthropic_client not in app.dependency_overrides
 
@@ -288,7 +288,7 @@ def test_ai_edit_returns_503_when_api_key_is_blank(client, session, monkeypatch)
     """A blank ANTHROPIC_API_KEY is what .env.example used to ship; the SDK
     treats it exactly like unset, so it must give the same clear 503."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "")
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
 
     assert get_anthropic_client not in app.dependency_overrides
 
@@ -302,13 +302,13 @@ def test_ai_model_id_falls_back_when_env_var_is_blank(monkeypatch):
     var; the `or` form must fall back to the default instead."""
     import importlib.util
 
-    import backend.ai
+    import backend.routers.ai
 
     def load_fresh():
         # Execute a fresh copy of ai.py without replacing sys.modules'
-        # backend.ai (which would break other tests' dependency overrides).
+        # backend.routers.ai (which would break other tests' dependency overrides).
         spec = importlib.util.spec_from_file_location(
-            "_ai_model_id_probe", backend.ai.__file__
+            "_ai_model_id_probe", backend.routers.ai.__file__
         )
         probe = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(probe)
@@ -328,7 +328,7 @@ def test_ai_edit_does_not_wipe_optional_fields_the_ai_omitted(client, session):
     """The AI-item schema lets optional fields be omitted from the response.
     An omitted field must leave the stored value alone rather than
     overwriting it with the field's default (data loss)."""
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
     from backend.models import Workout
 
     existing = Workout(
@@ -369,7 +369,7 @@ def test_ai_edit_does_not_wipe_optional_fields_the_ai_omitted(client, session):
 def test_ai_edit_create_still_applies_model_defaults_for_omitted_fields(client, session):
     """exclude_unset must not break the create path: a brand-new row built from
     only the fields the AI set still gets each model field's own default."""
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
 
     # The AI omitted ingredients (a default_factory field), so exclude_unset
     # drops it from the constructor call entirely.
@@ -402,7 +402,7 @@ def test_ai_edit_does_not_reset_a_sent_reminder_the_ai_omitted(client, session):
     True once a reminder has fired and must not silently flip back to False."""
     from datetime import datetime
 
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
     from backend.models import Reminder
 
     existing = Reminder(
@@ -436,7 +436,7 @@ def test_ai_edit_does_not_reset_a_sent_reminder_the_ai_omitted(client, session):
 
 
 def test_ai_edit_logs_a_warning_when_rows_are_deleted(client, session, caplog):
-    from backend.ai import get_anthropic_client
+    from backend.routers.ai import get_anthropic_client
     from backend.models import MealPlanItem, MealSlot
 
     doomed = MealPlanItem(
@@ -453,7 +453,7 @@ def test_ai_edit_logs_a_warning_when_rows_are_deleted(client, session, caplog):
     mock_client = make_mock_anthropic_client([])
     app.dependency_overrides[get_anthropic_client] = lambda: mock_client
 
-    with caplog.at_level(logging.WARNING, logger="backend.ai"):
+    with caplog.at_level(logging.WARNING, logger="backend.routers.ai"):
         resp = client.post(
             "/api/meal-plan/ai-edit", json={"message": "remove Tuesday's lunch"}
         )
@@ -461,7 +461,7 @@ def test_ai_edit_logs_a_warning_when_rows_are_deleted(client, session, caplog):
     app.dependency_overrides.pop(get_anthropic_client, None)
 
     assert resp.status_code == 200
-    messages = [r.getMessage() for r in caplog.records if r.name == "backend.ai"]
+    messages = [r.getMessage() for r in caplog.records if r.name == "backend.routers.ai"]
     assert any(
         str(doomed_id) in m and "remove Tuesday's lunch" in m for m in messages
     ), messages

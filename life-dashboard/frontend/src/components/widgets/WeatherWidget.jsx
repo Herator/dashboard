@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { getWeather } from "../api";
-import { describeWeatherCode } from "../weatherCodes";
+import { getWeather } from "../../lib/api";
+import { describeWeatherCode } from "../../lib/weatherCodes";
 import WeatherIcon from "./WeatherIcon";
 
 const WEEKDAY_FORMAT = { weekday: "short" };

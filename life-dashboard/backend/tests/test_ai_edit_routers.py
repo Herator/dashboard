@@ -2,7 +2,7 @@ from datetime import date, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from backend.ai import get_anthropic_client
+from backend.routers.ai import get_anthropic_client
 from backend.main import app
 
 

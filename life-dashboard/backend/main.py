@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
 
-from backend.ai import make_ai_edit_router
+from backend.routers.ai import make_ai_edit_router
 from backend.crud import make_crud_router
 from backend.database import get_session, init_db
 from backend.grocery_sync import (
@@ -13,9 +13,9 @@ from backend.grocery_sync import (
     sync_meal_plan_to_groceries,
     sync_week_for_meal,
 )
-from backend import weather
-from backend import calendar_feeds
-from backend import printer
+from backend.routers import weather
+from backend.routers import calendar_feeds
+from backend.routers import printer
 from backend.models import (
     Event,
     MealPlanItem,

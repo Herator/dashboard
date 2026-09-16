@@ -2,9 +2,9 @@ import struct
 
 from sqlmodel import select
 
-import backend.printer as printer_module
+import backend.routers.printer as printer_module
 from backend.models import FilamentSpool
-from backend.printer import (
+from backend.routers.printer import (
     parse_report,
     sync_ams_to_inventory,
     nearest_color_name,
