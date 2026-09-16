@@ -55,49 +55,14 @@ app.include_router(
         post_mutation_hook=sync_week_for_meal,
     )
 )
-app.include_router(
-    make_ai_edit_router(MealPlanItem, "/api/meal-plan", "meal-plan-ai", "meal plan", scope_field="date")
-)
+app.include_router(make_ai_edit_router("meal-plan", "/api/meal-plan", "meal-plan-ai"))
 app.include_router(make_crud_router(GroceryItem, "/api/groceries", "groceries"))
 app.include_router(make_crud_router(Workout, "/api/workouts", "workouts"))
-app.include_router(
-    make_ai_edit_router(
-        Workout,
-        "/api/workouts",
-        "workouts-ai",
-        "workout plan",
-        scope_field="date",
-        extra_instructions=(
-            "When asked for a workout for a given training split (e.g. Push Day, "
-            "Pull Day, Leg Day, Chest Day, Back Day, Shoulder Day, Arm Day, Full "
-            "Body, Cardio), populate `exercises` as a concrete, ordered list "
-            "appropriate to that split — not vague advice. Each exercise needs "
-            "`name`, `sets` (an integer), `reps` (a short string like '8' or "
-            "'8-10' or 'AMRAP'), `muscle` (the primary muscle group it targets, "
-            "e.g. 'Chest'), and `cue` (a short one-sentence form tip). Leave "
-            "`weight` and `actual_reps` as empty lists, and set `completed` to a "
-            "list of `sets` `false` values (the user checks these off during "
-            "the workout — never mark any as already done). Default to 5-6 "
-            "compound-first exercises in a sensible order (compounds before "
-            "isolation) unless asked for more or fewer. Also set `plan_text` to "
-            "a short one-line summary (e.g. 'Push Day: Chest, Shoulders, "
-            "Triceps') — it's shown in the log list, so keep it brief rather "
-            "than listing exercises there too. When the request states or "
-            "implies a goal (strength/hypertrophy/endurance/cardio), duration "
-            "in minutes, experience level, available equipment, or target "
-            "muscle groups, set the matching `goal`, `duration_min`, `level`, "
-            "`equipment` (list of strings) and `muscles` (list of strings) "
-            "fields — leave any you can't infer as null/empty. Set `generated` "
-            "to true for any workout you create or substantially rewrite here."
-        ),
-    )
-)
+app.include_router(make_ai_edit_router("workouts", "/api/workouts", "workouts-ai"))
 app.include_router(make_crud_router(WorkoutSchedule, "/api/workout-schedule", "workout-schedule"))
 app.include_router(make_crud_router(Exam, "/api/exams", "exams"))
 app.include_router(make_crud_router(Reminder, "/api/reminders", "reminders"))
-app.include_router(
-    make_ai_edit_router(Reminder, "/api/reminders", "reminders-ai", "reminders")
-)
+app.include_router(make_ai_edit_router("reminders", "/api/reminders", "reminders-ai"))
 app.include_router(make_crud_router(Package, "/api/packages", "packages"))
 app.include_router(make_crud_router(QuickLink, "/api/quick-links", "quick-links"))
 app.include_router(make_crud_router(FilamentSpool, "/api/filament", "filament"))
