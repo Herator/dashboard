@@ -16,6 +16,7 @@ from backend.grocery_sync import (
 from backend.routers import weather
 from backend.routers import calendar_feeds
 from backend.routers import printer
+from backend.routers import voice
 from backend.models import (
     Event,
     MealPlanItem,
@@ -73,6 +74,7 @@ app.include_router(weather.router)
 app.include_router(calendar_feeds.crud_router)
 app.include_router(calendar_feeds.events_router)
 app.include_router(printer.router)
+app.include_router(voice.router)
 
 
 @app.post("/api/groceries/sync-meal-plan")
