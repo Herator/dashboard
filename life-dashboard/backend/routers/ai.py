@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Type
 
 import anthropic
@@ -134,7 +134,16 @@ def _scoped_existing(
         resolved_from = date_from or default_start
         resolved_to = date_to or default_end
         column = getattr(config.model, config.scope_field)
-        query = query.where(column >= resolved_from, column <= resolved_to)
+        # A datetime-typed scope column (e.g. Event.start) needs a half-open
+        # upper bound one day later: comparing it against a bare `date`
+        # (midnight of that day) would silently exclude the rest of the
+        # last day, even though the scope note below promises it's included.
+        # date-typed columns are untouched, so their query stays byte-identical.
+        field_type = config.model.model_fields[config.scope_field].annotation
+        if field_type is datetime:
+            query = query.where(column >= resolved_from, column < resolved_to + timedelta(days=1))
+        else:
+            query = query.where(column >= resolved_from, column <= resolved_to)
         scope_note = (
             f" You are only shown, and may only affect, entries with "
             f"{config.scope_field} between {resolved_from.isoformat()} and "

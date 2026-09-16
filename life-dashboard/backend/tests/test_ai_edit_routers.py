@@ -1,8 +1,9 @@
+import json
 from datetime import date, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from backend.routers.ai import get_anthropic_client
+from backend.routers.ai import _current_week_bounds, get_anthropic_client
 from backend.main import app
 
 
@@ -150,6 +151,40 @@ def test_calendar_ai_edit_endpoint_exists_and_is_scoped(client, session):
     call_kwargs = mock_client.messages.parse.call_args.kwargs
     assert "calendar event" in call_kwargs["system"].lower()
     assert "entries with start between" in call_kwargs["system"]
+
+
+def test_calendar_ai_edit_includes_events_late_on_the_last_scoped_day(client, session):
+    """`start` is a datetime column, so the default week's last day must be
+    scoped as a half-open range through the *next* midnight — otherwise an
+    event later that same day is silently excluded despite the system
+    prompt's own "inclusive" scope note (see `_scoped_existing`)."""
+    from backend.models import CalendarSource, Event
+
+    _, week_end = _current_week_bounds()
+    late_event = Event(
+        source=CalendarSource.self,
+        title="Late event",
+        start=datetime(week_end.year, week_end.month, week_end.day, 21, 30),
+        end=datetime(week_end.year, week_end.month, week_end.day, 22, 30),
+    )
+    session.add(late_event)
+    session.commit()
+
+    mock_client = make_mock_client([])
+    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+
+    resp = client.post("/api/events/ai-edit", json={"message": "what's on my calendar"})
+
+    app.dependency_overrides.pop(get_anthropic_client, None)
+
+    assert resp.status_code == 200
+    call_kwargs = mock_client.messages.parse.call_args.kwargs
+    current_json = json.loads(
+        call_kwargs["messages"][0]["content"]
+        .split("Current data: ", 1)[1]
+        .split("\n\nUser request:", 1)[0]
+    )
+    assert [item["title"] for item in current_json] == ["Late event"]
 
 
 def test_filament_ai_edit_endpoint_exists_and_is_unscoped(client, session):
