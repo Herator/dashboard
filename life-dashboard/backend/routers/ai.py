@@ -187,6 +187,9 @@ def _ask_claude(
             status_code=422, detail="The AI declined to process this request."
         )
 
+    # parsed_output can be None in narrow cases (e.g. an empty content
+    # list) that neither the refusal check nor ValidationError catches;
+    # reading .items off None would be an unhandled 500.
     parsed_output = getattr(response, "parsed_output", None)
     if parsed_output is None:
         raise HTTPException(
@@ -223,6 +226,9 @@ def _reconcile(
     stale_ids = existing_ids - returned_ids
 
     if stale_ids:
+        # Deletions are how the AI expresses "remove this", so a bad
+        # response can quietly wipe rows. Leave a paper trail naming what
+        # was deleted and which request caused it.
         if message is not None:
             logger.warning(
                 "AI-edit deleting %d row(s) from %s: ids=%s (user message: %r)",
@@ -250,6 +256,13 @@ def _reconcile(
     result_rows = []
 
     for item in returned_items:
+        # exclude_unset: the AI-item schema legitimately allows optional
+        # fields to be omitted from the model's JSON, and an omitted field
+        # would otherwise come back as its default and overwrite whatever
+        # was stored (e.g. wiping Workout.notes, or resetting Reminder.sent
+        # back to False). Matches the PUT handler's semantics in crud.py.
+        # On the create path, anything omitted here simply falls back to the
+        # SQLModel field's own default at construction time.
         data = item.model_dump(exclude={"id"}, exclude_unset=True)
         if item.id is not None and item.id in existing_ids:
             row = existing_by_id[item.id]
@@ -338,6 +351,9 @@ def make_ai_edit_router(resource_key: str, prefix: str, tag: str) -> APIRouter:
         if config.model is MealPlanItem:
             weeks = {get_week_start(row.date) for row in result_rows}
             for week in weeks:
+                # The meal-plan mutation already committed in _reconcile; a
+                # sync failure must not turn success into a 500 (the client
+                # would retry and duplicate meals), so log and continue.
                 try:
                     sync_meal_plan_to_groceries(session, week)
                 except Exception:
@@ -346,7 +362,7 @@ def make_ai_edit_router(resource_key: str, prefix: str, tag: str) -> APIRouter:
                         week,
                     )
             for row in result_rows:
-                session.refresh(row)
+                session.refresh(row)  # sync's commit expired the rows
         return result_rows
 
     return router
