@@ -3,36 +3,38 @@ from datetime import date, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from backend.routers.ai import _current_week_bounds, get_anthropic_client
+from backend.routers.ai import _current_week_bounds, get_ai_client
 from backend.main import app
 
 
 def make_mock_client(parsed_items):
     mock_client = MagicMock()
-    mock_client.messages.parse.return_value = SimpleNamespace(
-        parsed_output=SimpleNamespace(items=parsed_items), stop_reason="end_turn"
+    mock_client.models.generate_content.return_value = SimpleNamespace(
+        parsed=SimpleNamespace(items=parsed_items),
+        candidates=[SimpleNamespace(finish_reason="STOP")],
     )
     return mock_client
 
 
 def test_workouts_ai_edit_endpoint_exists_and_is_scoped(client, session):
     mock_client = make_mock_client([])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/workouts/ai-edit", json={"message": "make Thursday a rest day"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
-    call_kwargs = mock_client.messages.parse.call_args.kwargs
-    assert "workout" in call_kwargs["system"].lower()
+    call_kwargs = mock_client.models.generate_content.call_args.kwargs
+    system_instruction = call_kwargs["config"].system_instruction
+    assert "workout" in system_instruction.lower()
     # scope_note is only generated when scope_field is active; assert on its unique text
-    assert "entries with date between" in call_kwargs["system"]
+    assert "entries with date between" in system_instruction
     # extra_instructions steers the AI toward concrete exercises for a split,
     # not vague advice — assert it actually reaches the system prompt.
-    assert "Push Day" in call_kwargs["system"]
-    assert "exercises" in call_kwargs["system"]
-    assert "completed" in call_kwargs["system"]
+    assert "Push Day" in system_instruction
+    assert "exercises" in system_instruction
+    assert "completed" in system_instruction
 
 
 def test_reminders_ai_edit_endpoint_exists_and_is_unscoped(client, session):
@@ -57,14 +59,14 @@ def test_reminders_ai_edit_endpoint_exists_and_is_unscoped(client, session):
         },
     )
     mock_client = make_mock_client([new_item])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post(
         "/api/reminders/ai-edit",
         json={"message": "remind me to text her when I leave practice"},
     )
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     body = resp.json()
@@ -73,8 +75,8 @@ def test_reminders_ai_edit_endpoint_exists_and_is_unscoped(client, session):
     assert body[0]["trigger_time"] == "2026-09-10T20:00:00"
     assert body[0]["sent"] is False
     # Unscoped: no date_from/date_to language expected in the system prompt
-    call_kwargs = mock_client.messages.parse.call_args.kwargs
-    assert "between" not in call_kwargs["system"]
+    call_kwargs = mock_client.models.generate_content.call_args.kwargs
+    assert "between" not in call_kwargs["config"].system_instruction
 
 
 def test_workouts_ai_edit_preview_and_apply_round_trip(client, session):
@@ -94,13 +96,13 @@ def test_workouts_ai_edit_preview_and_apply_round_trip(client, session):
         ),
     )
     mock_client = make_mock_client([updated_item])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     preview = client.post(
         "/api/workouts/ai-edit/preview", json={"message": "make it a tempo run"}
     ).json()
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert len(preview["updated"]) == 1
     assert "notes" not in preview["items"][0]
@@ -121,14 +123,14 @@ def test_reminders_ai_edit_preview_and_apply_round_trip(client, session):
         },
     )
     mock_client = make_mock_client([new_item])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     preview = client.post(
         "/api/reminders/ai-edit/preview",
         json={"message": "remind me to text her when I leave practice"},
     ).json()
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert len(preview["created"]) == 1
 
@@ -141,16 +143,17 @@ def test_reminders_ai_edit_preview_and_apply_round_trip(client, session):
 
 def test_calendar_ai_edit_endpoint_exists_and_is_scoped(client, session):
     mock_client = make_mock_client([])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/events/ai-edit", json={"message": "add a tee time Saturday at 9am"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
-    call_kwargs = mock_client.messages.parse.call_args.kwargs
-    assert "calendar event" in call_kwargs["system"].lower()
-    assert "entries with start between" in call_kwargs["system"]
+    call_kwargs = mock_client.models.generate_content.call_args.kwargs
+    system_instruction = call_kwargs["config"].system_instruction
+    assert "calendar event" in system_instruction.lower()
+    assert "entries with start between" in system_instruction
 
 
 def test_calendar_ai_edit_includes_events_late_on_the_last_scoped_day(client, session):
@@ -171,16 +174,16 @@ def test_calendar_ai_edit_includes_events_late_on_the_last_scoped_day(client, se
     session.commit()
 
     mock_client = make_mock_client([])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/events/ai-edit", json={"message": "what's on my calendar"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
-    call_kwargs = mock_client.messages.parse.call_args.kwargs
+    call_kwargs = mock_client.models.generate_content.call_args.kwargs
     current_json = json.loads(
-        call_kwargs["messages"][0]["content"]
+        call_kwargs["contents"]
         .split("Current data: ", 1)[1]
         .split("\n\nUser request:", 1)[0]
     )
@@ -189,16 +192,17 @@ def test_calendar_ai_edit_includes_events_late_on_the_last_scoped_day(client, se
 
 def test_filament_ai_edit_endpoint_exists_and_is_unscoped(client, session):
     mock_client = make_mock_client([])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/filament/ai-edit", json={"message": "I bought a new spool of black PLA"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
-    call_kwargs = mock_client.messages.parse.call_args.kwargs
-    assert "filament spool" in call_kwargs["system"].lower()
-    assert "between" not in call_kwargs["system"]
+    call_kwargs = mock_client.models.generate_content.call_args.kwargs
+    system_instruction = call_kwargs["config"].system_instruction
+    assert "filament spool" in system_instruction.lower()
+    assert "between" not in system_instruction
 
 
 def test_groceries_ai_edit_creates_a_new_item(client, session):
@@ -212,11 +216,11 @@ def test_groceries_ai_edit_creates_a_new_item(client, session):
         },
     )
     mock_client = make_mock_client([new_item])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/groceries/ai-edit", json={"message": "add a gallon of milk"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     body = resp.json()
