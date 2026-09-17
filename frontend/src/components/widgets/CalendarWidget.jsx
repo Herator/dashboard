@@ -6,7 +6,6 @@ import { RESOURCES } from "../../resourceConfigs";
 import ColorSwatchPicker from "../ColorSwatchPicker";
 
 const WEEKDAY_HEADERS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const SOURCE_OPTIONS = ["self", "girlfriend", "school"];
 // Date#getDay() is 0=Sunday..6=Saturday; WorkoutSchedule.day_of_week uses the
 // same three-letter keys the backend enum does.
 const DAY_KEYS_BY_GETDAY = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
@@ -437,14 +436,6 @@ export default function CalendarWidget() {
       ) : (
         <>
           <div className="calendar-legend">
-            <span className="calendar-legend-item">
-              <span className="calendar-legend-dot" style={{ background: "var(--accent)" }} />
-              Personal
-            </span>
-            <span className="calendar-legend-item">
-              <span className="calendar-legend-dot" style={{ background: "var(--accent-school)" }} />
-              School
-            </span>
           </div>
           <div className="calendar-grid">
             {WEEKDAY_HEADERS.map((d) => (
@@ -542,16 +533,6 @@ export default function CalendarWidget() {
                     <input value={form.title} required onChange={(e) => updateField("title", e.target.value)} />
                   </label>
                   <div className="calendar-event-form-row">
-                    <label>
-                      Source
-                      <select value={form.source} onChange={(e) => updateField("source", e.target.value)}>
-                        {SOURCE_OPTIONS.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
                     <label>
                       Start
                       <input

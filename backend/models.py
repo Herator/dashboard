@@ -63,8 +63,6 @@ class DayOfWeek(str, Enum):
 
 class CalendarSource(str, Enum):
     self = "self"
-    girlfriend = "girlfriend"
-    school = "school"
 
 
 class MealSlot(str, Enum):
@@ -78,7 +76,7 @@ class Event(SQLModel, table=True):
     __tablename__ = "events"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    source: CalendarSource
+    source: CalendarSource = CalendarSource.self
     title: str
     start: datetime
     end: datetime

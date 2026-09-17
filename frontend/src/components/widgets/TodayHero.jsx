@@ -52,7 +52,7 @@ export default function TodayHero() {
             id: `local-${ev.id}`,
             title: ev.title,
             start: ev.start,
-            color: ev.source === "school" ? "var(--accent-school)" : "var(--accent)",
+            color: ev.color || DEFAULT_EVENT_COLOR,
           })),
           ...(externalData.events || []).map((ev, i) => ({
             id: `ext-${i}`,
