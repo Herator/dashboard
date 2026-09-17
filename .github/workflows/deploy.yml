@@ -11,16 +11,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Install cloudflared
+        run: |
+          curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared.deb
+
+      # SSH isn't exposed to the internet directly — it's reached through the
+      # existing Cloudflare Tunnel's "ssh" Access application, gated by a
+      # Service Token (CF_ACCESS_CLIENT_ID/SECRET). This starts a local proxy
+      # on the runner at 127.0.0.1:2222 that forwards to the real sshd
+      # through Cloudflare; the actual SSH auth (HOME_SERVER_USER/SSH_KEY)
+      # still happens end-to-end on top of that, unchanged.
+      - name: Open Cloudflare Access tunnel to SSH
+        env:
+          TUNNEL_SERVICE_TOKEN_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          TUNNEL_SERVICE_TOKEN_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          cloudflared access tcp --hostname "${{ secrets.CF_SSH_HOSTNAME }}" --url 127.0.0.1:2222 &
+          sleep 5
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.0.1
         with:
-          host: ${{ secrets.HOME_SERVER_HOST }}
+          host: 127.0.0.1
+          port: 2222
           username: ${{ secrets.HOME_SERVER_USER }}
           key: ${{ secrets.HOME_SERVER_SSH_KEY }}
-          port: ${{ secrets.HOME_SERVER_PORT || 22 }}
           script: |
             set -e
-            export DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '$HOME/life-dashboard' }}"
+            export DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '$HOME/docker/stack/dashboard' }}"
             export DEPLOY_BRANCH="${{ secrets.DEPLOY_BRANCH || 'main' }}"
             export GIT_REPO="${{ github.server_url }}/${{ github.repository }}.git"
 
