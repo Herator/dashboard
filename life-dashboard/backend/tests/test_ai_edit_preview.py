@@ -174,7 +174,7 @@ def test_preview_passes_through_refusal_and_api_error_like_ai_edit(client, sessi
 
 def test_apply_does_not_call_the_ai(client, session):
     """apply must be pure DB reconciliation — it should work with no
-    Anthropic client override at all, proving it never calls messages.parse."""
+    Gemini client override at all, proving it never calls generate_content."""
     resp = client.post(
         "/api/meal-plan/ai-edit/apply",
         json={"items": [{"date": "2026-09-10", "meal_slot": "dinner", "name": "Tacos"}]},
