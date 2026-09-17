@@ -169,7 +169,11 @@ def _ask_ai(
     scope_note: str,
 ):
     current_json = [item.model_dump(mode="json") for item in existing]
+    today = date.today()
     system_prompt = (
+        f"Today is {today.isoformat()} ({today.strftime('%A')}). Resolve relative "
+        "dates/times in the request (\"tomorrow\", \"next Tuesday\", \"in 3 days\") "
+        "against this date — never guess or use a different date.\n\n"
         f"You are the AI editing assistant for the {config.resource_label} feature of a "
         "personal life dashboard. You will be given the user's current entries as "
         "a JSON array (each has an `id`) and a natural-language request describing "
