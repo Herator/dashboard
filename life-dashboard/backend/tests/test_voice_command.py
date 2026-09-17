@@ -2,20 +2,24 @@ from datetime import date
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-import anthropic
+from google.genai import errors as genai_errors
 
-from backend.routers.ai import get_anthropic_client
+from backend.routers.ai import get_ai_client
 from backend.main import app
 
 
 def _classify_response(resource_key):
     return SimpleNamespace(
-        parsed_output=SimpleNamespace(resource_key=resource_key), stop_reason="end_turn"
+        parsed=SimpleNamespace(resource_key=resource_key),
+        candidates=[SimpleNamespace(finish_reason="STOP")],
     )
 
 
 def _edit_response(items):
-    return SimpleNamespace(parsed_output=SimpleNamespace(items=items), stop_reason="end_turn")
+    return SimpleNamespace(
+        parsed=SimpleNamespace(items=items),
+        candidates=[SimpleNamespace(finish_reason="STOP")],
+    )
 
 
 def test_voice_command_routes_to_groceries_and_creates_item(client, session):
@@ -29,15 +33,15 @@ def test_voice_command_routes_to_groceries_and_creates_item(client, session):
         },
     )
     mock_client = MagicMock()
-    mock_client.messages.parse.side_effect = [
+    mock_client.models.generate_content.side_effect = [
         _classify_response("groceries"),
         _edit_response([new_item]),
     ]
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/voice-command", json={"message": "add milk to the grocery list"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     assert resp.json() == {"speech": "Added Milk to grocery list."}
@@ -49,28 +53,28 @@ def test_voice_command_routes_to_groceries_and_creates_item(client, session):
 
 def test_voice_command_speaks_apology_when_classification_is_unclear(client, session):
     mock_client = MagicMock()
-    mock_client.messages.parse.side_effect = [_classify_response(None)]
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client.models.generate_content.side_effect = [_classify_response(None)]
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/voice-command", json={"message": "what's the weather like"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     assert resp.json() == {"speech": "I'm not sure what you meant — try rephrasing."}
-    assert mock_client.messages.parse.call_count == 1  # never attempted an edit
+    assert mock_client.models.generate_content.call_count == 1  # never attempted an edit
 
 
 def test_voice_command_speaks_apology_when_classification_key_is_unknown(client, session):
     """The classifier returning a string that isn't a real registry key
     (a hallucinated or stale key) must be treated the same as `None`."""
     mock_client = MagicMock()
-    mock_client.messages.parse.side_effect = [_classify_response("not-a-real-resource")]
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client.models.generate_content.side_effect = [_classify_response("not-a-real-resource")]
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/voice-command", json={"message": "do something"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     assert resp.json() == {"speech": "I'm not sure what you meant — try rephrasing."}
@@ -78,15 +82,15 @@ def test_voice_command_speaks_apology_when_classification_key_is_unknown(client,
 
 def test_voice_command_speaks_apology_when_edit_step_fails(client, session):
     mock_client = MagicMock()
-    mock_client.messages.parse.side_effect = [
+    mock_client.models.generate_content.side_effect = [
         _classify_response("filament"),
-        anthropic.APIConnectionError(request=MagicMock()),
+        genai_errors.APIError(code=503, response_json={"message": "unavailable"}),
     ]
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/voice-command", json={"message": "I bought black PLA"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     assert resp.json() == {"speech": "Something went wrong updating that — try again in a bit."}
@@ -110,15 +114,15 @@ def test_voice_command_reports_updates_and_deletions(client, session):
         ),
     )
     mock_client = MagicMock()
-    mock_client.messages.parse.side_effect = [
+    mock_client.models.generate_content.side_effect = [
         _classify_response("reminders"),
         _edit_response([updated_item]),
     ]
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/voice-command", json={"message": "change my reminder text"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     assert resp.json() == {"speech": "Updated 1 item in reminders."}
@@ -135,15 +139,15 @@ def test_voice_command_reports_a_deletion(client, session):
     session.refresh(existing)
 
     mock_client = MagicMock()
-    mock_client.messages.parse.side_effect = [
+    mock_client.models.generate_content.side_effect = [
         _classify_response("reminders"),
         _edit_response([]),  # AI returned nothing -> existing row is stale -> deleted
     ]
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/voice-command", json={"message": "delete my old reminder"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     assert resp.json() == {"speech": "Removed Old reminder from reminders."}

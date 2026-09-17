@@ -5,9 +5,11 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Type
 
-import anthropic
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ValidationError, create_model
+from google import genai
+from google.genai import errors as genai_errors
+from google.genai import types as genai_types
+from pydantic import BaseModel, create_model
 from sqlmodel import Session, SQLModel, select
 
 from backend.crud import build_input_model
@@ -20,7 +22,7 @@ logger = logging.getLogger(__name__)
 # `or` rather than a `.get` default: an env var set to the empty string (which
 # is what copying .env.example verbatim used to produce) is still "set", so a
 # plain default would leave the model id as "" and send that to the API.
-AI_MODEL_ID = os.environ.get("AI_MODEL_ID") or "claude-opus-5"
+AI_MODEL_ID = os.environ.get("AI_MODEL_ID") or "gemini-flash-lite-latest"
 
 WORKOUT_EXTRA_INSTRUCTIONS = (
     "When asked for a workout for a given training split (e.g. Push Day, "
@@ -47,21 +49,21 @@ WORKOUT_EXTRA_INSTRUCTIONS = (
 )
 
 
-def get_anthropic_client() -> anthropic.Anthropic:
-    """FastAPI dependency yielding an Anthropic client.
+def get_ai_client() -> genai.Client:
+    """FastAPI dependency yielding a Gemini client.
 
-    Fails fast with a clear 503 when no API key is configured. Without this,
-    the SDK resolves a missing *or blank* ANTHROPIC_API_KEY to ``None`` and
-    then raises a bare ``TypeError`` from ``_validate_headers`` on the first
-    request — a ``TypeError`` is not an ``anthropic.APIError``, so it would
-    slip past the handler's error handling and surface as an opaque 500.
+    Fails fast with a clear 503 when no API key is configured — read
+    explicitly rather than relying on the SDK's own env-var auto-detection,
+    so a missing or blank GEMINI_API_KEY can't slip past into some other,
+    less clear error.
     """
-    if not os.environ.get("ANTHROPIC_API_KEY"):
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="AI editing is not configured: ANTHROPIC_API_KEY is not set.",
+            detail="AI editing is not configured: GEMINI_API_KEY is not set.",
         )
-    return anthropic.Anthropic()
+    return genai.Client(api_key=api_key)
 
 
 def _current_week_bounds() -> tuple[date, date]:
@@ -152,8 +154,15 @@ def _scoped_existing(
     return session.exec(query).all(), scope_note
 
 
-def _ask_claude(
-    client: anthropic.Anthropic,
+def _finish_reason(response: genai_types.GenerateContentResponse) -> Optional[str]:
+    candidates = getattr(response, "candidates", None)
+    if not candidates:
+        return None
+    return candidates[0].finish_reason
+
+
+def _ask_ai(
+    client: genai.Client,
     config: AiEditConfig,
     message: str,
     existing,
@@ -175,44 +184,40 @@ def _ask_claude(
         + (" " + config.extra_instructions if config.extra_instructions else "")
     )
     try:
-        response = client.messages.parse(
+        response = client.models.generate_content(
             model=AI_MODEL_ID,
-            max_tokens=4096,
-            system=system_prompt,
-            messages=[
-                {
-                    "role": "user",
-                    "content": (
-                        f"Current data: {json.dumps(current_json)}\n\n"
-                        f"User request: {message}"
-                    ),
-                }
-            ],
-            output_format=config.result_schema,
+            contents=(
+                f"Current data: {json.dumps(current_json)}\n\n"
+                f"User request: {message}"
+            ),
+            config=genai_types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                max_output_tokens=4096,
+                response_mime_type="application/json",
+                response_schema=config.result_schema,
+            ),
         )
-    except anthropic.APIError as exc:
+    except genai_errors.APIError as exc:
         raise HTTPException(status_code=502, detail=f"AI request failed: {exc}")
-    except ValidationError:
-        raise HTTPException(
-            status_code=502,
-            detail="AI response did not match the expected schema.",
-        )
 
-    if getattr(response, "stop_reason", None) == "refusal":
+    if _finish_reason(response) == "SAFETY":
         raise HTTPException(
             status_code=422, detail="The AI declined to process this request."
         )
 
-    # parsed_output can be None in narrow cases (e.g. an empty content
-    # list) that neither the refusal check nor ValidationError catches;
-    # reading .items off None would be an unhandled 500.
-    parsed_output = getattr(response, "parsed_output", None)
-    if parsed_output is None:
+    # .parsed is None both for a truly empty response and for one whose JSON
+    # didn't match config.result_schema — the SDK validates internally and
+    # swallows pydantic.ValidationError/JSONDecodeError itself
+    # (GenerateContentResponse._from_response), leaving .parsed at its
+    # default of None rather than raising. There is no separate
+    # schema-mismatch exception to catch here.
+    parsed = getattr(response, "parsed", None)
+    if parsed is None:
         raise HTTPException(
             status_code=502, detail="AI returned no usable response."
         )
 
-    return parsed_output.items
+    return parsed.items
 
 
 def _reconcile(
@@ -332,10 +337,10 @@ def make_ai_edit_router(resource_key: str, prefix: str, tag: str) -> APIRouter:
     def ai_edit(
         body: AiEditRequest,
         session: Session = Depends(get_session),
-        client: anthropic.Anthropic = Depends(get_anthropic_client),
+        client: genai.Client = Depends(get_ai_client),
     ):
         existing, scope_note = _scoped_existing(config, body.date_from, body.date_to, session)
-        returned_items = _ask_claude(client, config, body.message, existing, scope_note)
+        returned_items = _ask_ai(client, config, body.message, existing, scope_note)
         _, _, _, result_rows = _reconcile(
             config, session, existing, returned_items, commit=True, message=body.message
         )
@@ -345,10 +350,10 @@ def make_ai_edit_router(resource_key: str, prefix: str, tag: str) -> APIRouter:
     def ai_edit_preview(
         body: AiEditRequest,
         session: Session = Depends(get_session),
-        client: anthropic.Anthropic = Depends(get_anthropic_client),
+        client: genai.Client = Depends(get_ai_client),
     ):
         existing, scope_note = _scoped_existing(config, body.date_from, body.date_to, session)
-        returned_items = _ask_claude(client, config, body.message, existing, scope_note)
+        returned_items = _ask_ai(client, config, body.message, existing, scope_note)
         created, updated, deleted, _ = _reconcile(config, session, existing, returned_items, commit=False)
         items = [
             item.model_dump(mode="json", exclude_unset=True) for item in returned_items

@@ -7,10 +7,11 @@ from backend.main import app
 from backend.models import MealSlot
 
 
-def make_mock_anthropic_client(parsed_items, stop_reason="end_turn"):
+def make_mock_gemini_client(parsed_items, finish_reason="STOP"):
     mock_client = MagicMock()
-    mock_client.messages.parse.return_value = SimpleNamespace(
-        parsed_output=SimpleNamespace(items=parsed_items), stop_reason=stop_reason
+    mock_client.models.generate_content.return_value = SimpleNamespace(
+        parsed=SimpleNamespace(items=parsed_items),
+        candidates=[SimpleNamespace(finish_reason=finish_reason)],
     )
     return mock_client
 
@@ -35,21 +36,21 @@ def make_parsed_item(item_id, set_fields, unset_defaults=None):
 
 
 def test_preview_creates_show_up_in_created_and_nothing_is_persisted(client, session):
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
 
     new_item = make_parsed_item(
         None, {"date": date(2026, 9, 10), "meal_slot": MealSlot.dinner, "name": "Chicken stir fry"},
         unset_defaults={"ingredients": []},
     )
-    mock_client = make_mock_anthropic_client([new_item])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([new_item])
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post(
         "/api/meal-plan/ai-edit/preview",
         json={"message": "add chicken stir fry for dinner"},
     )
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     body = resp.json()
@@ -63,7 +64,7 @@ def test_preview_creates_show_up_in_created_and_nothing_is_persisted(client, ses
 
 
 def test_preview_updates_show_before_and_after_without_persisting(client, session):
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
     from backend.models import MealPlanItem, MealSlot
 
     existing = MealPlanItem(
@@ -78,14 +79,14 @@ def test_preview_updates_show_before_and_after_without_persisting(client, sessio
         {"date": date(2026, 9, 10), "meal_slot": MealSlot.dinner, "name": "Chicken stir fry"},
         unset_defaults={"ingredients": ["rice"]},
     )
-    mock_client = make_mock_anthropic_client([updated_item])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([updated_item])
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post(
         "/api/meal-plan/ai-edit/preview", json={"message": "swap for chicken stir fry"}
     )
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     body = resp.json()
@@ -104,7 +105,7 @@ def test_preview_updates_show_before_and_after_without_persisting(client, sessio
 
 
 def test_preview_deletions_show_up_without_persisting(client, session):
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
     from backend.models import MealPlanItem, MealSlot
 
     existing = MealPlanItem(
@@ -113,12 +114,12 @@ def test_preview_deletions_show_up_without_persisting(client, session):
     session.add(existing)
     session.commit()
 
-    mock_client = make_mock_anthropic_client([])  # AI returned nothing: delete everything in scope
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([])  # AI returned nothing: delete everything in scope
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/meal-plan/ai-edit/preview", json={"message": "remove lunch"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     body = resp.json()
@@ -133,7 +134,7 @@ def test_preview_deletions_show_up_without_persisting(client, session):
 def test_preview_no_op_change_is_not_reported_as_updated(client, session):
     """If the AI echoes an item back completely unchanged, it shouldn't show
     up in `updated` — that list is for genuinely different before/after."""
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
     from backend.models import MealPlanItem, MealSlot
 
     existing = MealPlanItem(
@@ -147,33 +148,33 @@ def test_preview_no_op_change_is_not_reported_as_updated(client, session):
         existing.id,
         {"date": date(2026, 9, 10), "meal_slot": MealSlot.dinner, "name": "Same dinner", "ingredients": ["rice"]},
     )
-    mock_client = make_mock_anthropic_client([same_item])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([same_item])
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/meal-plan/ai-edit/preview", json={"message": "no real change"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     assert resp.json()["updated"] == []
 
 
 def test_preview_passes_through_refusal_and_api_error_like_ai_edit(client, session):
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
 
-    mock_client = make_mock_anthropic_client([], stop_reason="refusal")
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([], finish_reason="SAFETY")
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/meal-plan/ai-edit/preview", json={"message": "do something bad"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 422
 
 
 def test_apply_does_not_call_the_ai(client, session):
     """apply must be pure DB reconciliation — it should work with no
-    Anthropic client override at all, proving it never calls messages.parse."""
+    Gemini client override at all, proving it never calls generate_content."""
     resp = client.post(
         "/api/meal-plan/ai-edit/apply",
         json={"items": [{"date": "2026-09-10", "meal_slot": "dinner", "name": "Tacos"}]},
@@ -185,20 +186,20 @@ def test_apply_does_not_call_the_ai(client, session):
 
 
 def test_preview_then_apply_round_trip_creates_correctly(client, session):
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
 
     new_item = make_parsed_item(
         None, {"date": date(2026, 9, 10), "meal_slot": MealSlot.dinner, "name": "Chicken stir fry"},
         unset_defaults={"ingredients": []},
     )
-    mock_client = make_mock_anthropic_client([new_item])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([new_item])
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     preview = client.post(
         "/api/meal-plan/ai-edit/preview", json={"message": "add chicken stir fry"}
     ).json()
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     apply_resp = client.post("/api/meal-plan/ai-edit/apply", json={"items": preview["items"]})
 
@@ -212,7 +213,7 @@ def test_preview_then_apply_round_trip_creates_correctly(client, session):
 def test_preview_then_apply_round_trip_preserves_omitted_optional_fields(client, session):
     """The exact regression this plan exists to protect: an update that omits
     an optional field must not wipe it, all the way through preview -> apply."""
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
     from backend.models import MealPlanItem, MealSlot
 
     existing = MealPlanItem(
@@ -227,14 +228,14 @@ def test_preview_then_apply_round_trip_preserves_omitted_optional_fields(client,
         {"date": date(2026, 9, 10), "meal_slot": MealSlot.dinner, "name": "Chicken stir fry"},
         unset_defaults={"ingredients": ["rice"]},
     )
-    mock_client = make_mock_anthropic_client([updated_item])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([updated_item])
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     preview = client.post(
         "/api/meal-plan/ai-edit/preview", json={"message": "swap for chicken stir fry"}
     ).json()
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     # Confirm the round trip actually dropped the unset field before we even
     # get to apply — this is what makes the test meaningful rather than
@@ -251,7 +252,7 @@ def test_preview_then_apply_round_trip_preserves_omitted_optional_fields(client,
 
 
 def test_preview_then_apply_round_trip_deletes_correctly(client, session):
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
     from backend.models import MealPlanItem, MealSlot
 
     existing = MealPlanItem(
@@ -260,14 +261,14 @@ def test_preview_then_apply_round_trip_deletes_correctly(client, session):
     session.add(existing)
     session.commit()
 
-    mock_client = make_mock_anthropic_client([])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([])
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     preview = client.post(
         "/api/meal-plan/ai-edit/preview", json={"message": "remove lunch"}
     ).json()
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert len(preview["deleted"]) == 1
 

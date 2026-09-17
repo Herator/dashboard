@@ -8,15 +8,15 @@ from backend.main import app
 from backend.models import MealSlot
 
 
-def make_mock_anthropic_client(parsed_items, stop_reason="end_turn"):
-    """Build a fake Anthropic client whose messages.parse() returns a
-    canned parsed result, so tests never make a real network call."""
+def make_mock_gemini_client(parsed_items, finish_reason="STOP"):
+    """Build a fake Gemini client whose generate_content() returns a canned
+    parsed result, so tests never make a real network call."""
     mock_client = MagicMock()
     mock_response = SimpleNamespace(
-        parsed_output=SimpleNamespace(items=parsed_items),
-        stop_reason=stop_reason,
+        parsed=SimpleNamespace(items=parsed_items),
+        candidates=[SimpleNamespace(finish_reason=finish_reason)],
     )
-    mock_client.messages.parse.return_value = mock_response
+    mock_client.models.generate_content.return_value = mock_response
     return mock_client
 
 
@@ -45,7 +45,7 @@ def make_parsed_item(item_id, set_fields, unset_defaults=None):
 
 
 def test_ai_edit_creates_a_new_meal_plan_item(client, session):
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
 
     # ItemSchema instances are duck-typed here via SimpleNamespace with the
     # fields the endpoint reads: id, date, meal_slot, name, ingredients.
@@ -66,15 +66,15 @@ def test_ai_edit_creates_a_new_meal_plan_item(client, session):
             "ingredients": ["chicken", "soy sauce"],
         },
     )
-    mock_client = make_mock_anthropic_client([new_item])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([new_item])
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post(
         "/api/meal-plan/ai-edit",
         json={"message": "add chicken stir fry for dinner Thursday"},
     )
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     body = resp.json()
@@ -83,13 +83,13 @@ def test_ai_edit_creates_a_new_meal_plan_item(client, session):
     assert body[0]["id"] is not None
 
     # Verify the system prompt mentioned the scope and the raw request reached the mock
-    call_kwargs = mock_client.messages.parse.call_args.kwargs
-    assert "meal plan" in call_kwargs["system"].lower()
-    assert "add chicken stir fry for dinner Thursday" in call_kwargs["messages"][0]["content"]
+    call_kwargs = mock_client.models.generate_content.call_args.kwargs
+    assert "meal plan" in call_kwargs["config"].system_instruction.lower()
+    assert "add chicken stir fry for dinner Thursday" in call_kwargs["contents"]
 
 
 def test_ai_edit_updates_an_existing_item_by_id(client, session):
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
     from backend.models import MealPlanItem, MealSlot
 
     existing = MealPlanItem(
@@ -112,15 +112,15 @@ def test_ai_edit_updates_an_existing_item_by_id(client, session):
             "ingredients": ["chicken"],
         },
     )
-    mock_client = make_mock_anthropic_client([updated_item])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([updated_item])
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post(
         "/api/meal-plan/ai-edit",
         json={"message": "swap Tuesday's old dinner for chicken stir fry"},
     )
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     body = resp.json()
@@ -130,7 +130,7 @@ def test_ai_edit_updates_an_existing_item_by_id(client, session):
 
 
 def test_ai_edit_deletes_items_omitted_from_the_response(client, session):
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
     from backend.models import MealPlanItem, MealSlot
 
     to_delete = MealPlanItem(
@@ -140,15 +140,15 @@ def test_ai_edit_deletes_items_omitted_from_the_response(client, session):
     session.commit()
     session.refresh(to_delete)
 
-    mock_client = make_mock_anthropic_client([])  # AI returned an empty list: delete everything in scope
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([])  # AI returned an empty list: delete everything in scope
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post(
         "/api/meal-plan/ai-edit",
         json={"message": "remove Tuesday's lunch"},
     )
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     assert resp.json() == []
@@ -158,7 +158,7 @@ def test_ai_edit_deletes_items_omitted_from_the_response(client, session):
 
 
 def test_ai_edit_scopes_to_the_requested_date_range(client, session):
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
     from backend.models import MealPlanItem, MealSlot
 
     in_scope = MealPlanItem(
@@ -170,8 +170,8 @@ def test_ai_edit_scopes_to_the_requested_date_range(client, session):
     session.add_all([in_scope, out_of_scope])
     session.commit()
 
-    mock_client = make_mock_anthropic_client([])  # returning nothing in scope
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([])  # returning nothing in scope
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post(
         "/api/meal-plan/ai-edit",
@@ -182,7 +182,7 @@ def test_ai_edit_scopes_to_the_requested_date_range(client, session):
         },
     )
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     # Only the in-scope item should have been visible to delete; the
@@ -192,105 +192,79 @@ def test_ai_edit_scopes_to_the_requested_date_range(client, session):
     assert remaining[0]["name"] == "Out of scope"
 
 
-def test_ai_edit_returns_502_on_anthropic_api_error(client, session):
-    import anthropic
+def test_ai_edit_returns_502_on_gemini_api_error(client, session):
+    from google.genai import errors as genai_errors
 
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
 
     mock_client = MagicMock()
-    mock_client.messages.parse.side_effect = anthropic.APIConnectionError(request=MagicMock())
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client.models.generate_content.side_effect = genai_errors.APIError(
+        code=503, response_json={"message": "model unavailable"}
+    )
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/meal-plan/ai-edit", json={"message": "anything"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
-
-    assert resp.status_code == 502
-
-
-def test_ai_edit_returns_502_on_schema_invalid_ai_response(client, session):
-    """client.messages.parse()'s post_parser validates the model's JSON text
-    against ResultSchema internally and raises pydantic.ValidationError on a
-    mismatch (e.g. truncated JSON from hitting max_tokens). That error must
-    not propagate as an unhandled 500."""
-    from pydantic import TypeAdapter, ValidationError
-
-    from backend.routers.ai import get_anthropic_client
-
-    try:
-        TypeAdapter(int).validate_python("not an int")
-    except ValidationError as exc:
-        validation_error = exc
-    else:
-        raise AssertionError("expected TypeAdapter(int) to reject a non-int string")
-
-    mock_client = MagicMock()
-    mock_client.messages.parse.side_effect = validation_error
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
-
-    resp = client.post("/api/meal-plan/ai-edit", json={"message": "anything"})
-
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 502
 
 
 def test_ai_edit_returns_422_when_the_ai_refuses(client, session):
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
 
-    mock_client = make_mock_anthropic_client([], stop_reason="refusal")
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([], finish_reason="SAFETY")
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/meal-plan/ai-edit", json={"message": "do something bad"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 422
     assert "declined" in resp.json()["detail"].lower()
 
 
-def test_ai_edit_returns_502_when_parsed_output_is_none(client, session):
-    """parsed_output can be None in edge cases (e.g. an empty content list)
-    that neither the refusal check nor ValidationError catches. Reading
-    .items off None would be an AttributeError -> unhandled 500."""
-    from backend.routers.ai import get_anthropic_client
+def test_ai_edit_returns_502_when_parsed_is_none(client, session):
+    """.parsed is None both for a truly empty response and for one whose JSON
+    didn't match the schema — the SDK validates internally and swallows the
+    mismatch (see backend/routers/ai.py's _ask_ai). Reading .items off None
+    would otherwise be an unhandled 500."""
+    from backend.routers.ai import get_ai_client
 
     mock_client = MagicMock()
-    mock_client.messages.parse.return_value = SimpleNamespace(
-        parsed_output=None, stop_reason="end_turn"
+    mock_client.models.generate_content.return_value = SimpleNamespace(
+        parsed=None, candidates=[SimpleNamespace(finish_reason="STOP")]
     )
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post("/api/meal-plan/ai-edit", json={"message": "anything"})
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 502
     assert "no usable response" in resp.json()["detail"].lower()
 
 
 def test_ai_edit_returns_503_when_no_api_key_is_configured(client, session, monkeypatch):
-    """The real get_anthropic_client must run here — no dependency override —
-    so a missing key surfaces as a clear 503 instead of the bare TypeError the
-    SDK raises (which is not an anthropic.APIError and would be a 500)."""
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    from backend.routers.ai import get_anthropic_client
+    """The real get_ai_client must run here — no dependency override — so a
+    missing key surfaces as a clear 503."""
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    from backend.routers.ai import get_ai_client
 
-    assert get_anthropic_client not in app.dependency_overrides
+    assert get_ai_client not in app.dependency_overrides
 
     resp = client.post("/api/meal-plan/ai-edit", json={"message": "anything"})
 
     assert resp.status_code == 503
-    assert "ANTHROPIC_API_KEY" in resp.json()["detail"]
+    assert "GEMINI_API_KEY" in resp.json()["detail"]
 
 
 def test_ai_edit_returns_503_when_api_key_is_blank(client, session, monkeypatch):
-    """A blank ANTHROPIC_API_KEY is what .env.example used to ship; the SDK
-    treats it exactly like unset, so it must give the same clear 503."""
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
-    from backend.routers.ai import get_anthropic_client
+    """A blank GEMINI_API_KEY must give the same clear 503 as an unset one."""
+    monkeypatch.setenv("GEMINI_API_KEY", "")
+    from backend.routers.ai import get_ai_client
 
-    assert get_anthropic_client not in app.dependency_overrides
+    assert get_ai_client not in app.dependency_overrides
 
     resp = client.post("/api/workouts/ai-edit", json={"message": "anything"})
 
@@ -315,20 +289,20 @@ def test_ai_model_id_falls_back_when_env_var_is_blank(monkeypatch):
         return probe
 
     monkeypatch.setenv("AI_MODEL_ID", "")
-    assert load_fresh().AI_MODEL_ID == "claude-opus-5"
+    assert load_fresh().AI_MODEL_ID == "gemini-flash-lite-latest"
 
     monkeypatch.delenv("AI_MODEL_ID", raising=False)
-    assert load_fresh().AI_MODEL_ID == "claude-opus-5"
+    assert load_fresh().AI_MODEL_ID == "gemini-flash-lite-latest"
 
-    monkeypatch.setenv("AI_MODEL_ID", "claude-some-other-model")
-    assert load_fresh().AI_MODEL_ID == "claude-some-other-model"
+    monkeypatch.setenv("AI_MODEL_ID", "gemini-some-other-model")
+    assert load_fresh().AI_MODEL_ID == "gemini-some-other-model"
 
 
 def test_ai_edit_does_not_wipe_optional_fields_the_ai_omitted(client, session):
     """The AI-item schema lets optional fields be omitted from the response.
     An omitted field must leave the stored value alone rather than
     overwriting it with the field's default (data loss)."""
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
     from backend.models import Workout
 
     existing = Workout(
@@ -345,8 +319,8 @@ def test_ai_edit_does_not_wipe_optional_fields_the_ai_omitted(client, session):
         {"date": date(2026, 9, 10), "plan_text": "5k tempo"},
         unset_defaults={"notes": None},
     )
-    mock_client = make_mock_anthropic_client([updated_item])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([updated_item])
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post(
         "/api/workouts/ai-edit",
@@ -357,7 +331,7 @@ def test_ai_edit_does_not_wipe_optional_fields_the_ai_omitted(client, session):
         },
     )
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     body = resp.json()
@@ -369,7 +343,7 @@ def test_ai_edit_does_not_wipe_optional_fields_the_ai_omitted(client, session):
 def test_ai_edit_create_still_applies_model_defaults_for_omitted_fields(client, session):
     """exclude_unset must not break the create path: a brand-new row built from
     only the fields the AI set still gets each model field's own default."""
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
 
     # The AI omitted ingredients (a default_factory field), so exclude_unset
     # drops it from the constructor call entirely.
@@ -382,14 +356,14 @@ def test_ai_edit_create_still_applies_model_defaults_for_omitted_fields(client, 
         },
         unset_defaults={"ingredients": []},
     )
-    mock_client = make_mock_anthropic_client([new_item])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([new_item])
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post(
         "/api/meal-plan/ai-edit", json={"message": "add chicken stir fry for dinner"}
     )
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     body = resp.json()
@@ -402,7 +376,7 @@ def test_ai_edit_does_not_reset_a_sent_reminder_the_ai_omitted(client, session):
     True once a reminder has fired and must not silently flip back to False."""
     from datetime import datetime
 
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
     from backend.models import Reminder
 
     existing = Reminder(
@@ -420,14 +394,14 @@ def test_ai_edit_does_not_reset_a_sent_reminder_the_ai_omitted(client, session):
         },
         unset_defaults={"sent": False},
     )
-    mock_client = make_mock_anthropic_client([updated_item])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([updated_item])
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post(
         "/api/reminders/ai-edit", json={"message": "push that reminder an hour later"}
     )
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     body = resp.json()
@@ -436,7 +410,7 @@ def test_ai_edit_does_not_reset_a_sent_reminder_the_ai_omitted(client, session):
 
 
 def test_ai_edit_logs_a_warning_when_rows_are_deleted(client, session, caplog):
-    from backend.routers.ai import get_anthropic_client
+    from backend.routers.ai import get_ai_client
     from backend.models import MealPlanItem, MealSlot
 
     doomed = MealPlanItem(
@@ -450,15 +424,15 @@ def test_ai_edit_logs_a_warning_when_rows_are_deleted(client, session, caplog):
     session.refresh(doomed)
     doomed_id = doomed.id
 
-    mock_client = make_mock_anthropic_client([])
-    app.dependency_overrides[get_anthropic_client] = lambda: mock_client
+    mock_client = make_mock_gemini_client([])
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     with caplog.at_level(logging.WARNING, logger="backend.routers.ai"):
         resp = client.post(
             "/api/meal-plan/ai-edit", json={"message": "remove Tuesday's lunch"}
         )
 
-    app.dependency_overrides.pop(get_anthropic_client, None)
+    app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
     messages = [r.getMessage() for r in caplog.records if r.name == "backend.routers.ai"]
