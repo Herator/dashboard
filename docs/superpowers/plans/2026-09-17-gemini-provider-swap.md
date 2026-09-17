@@ -522,7 +522,7 @@ The remaining tests (`test_ai_edit_updates_an_existing_item_by_id`, `test_ai_edi
 - [ ] **Step 7: Run the test file**
 
 Run: `cd life-dashboard/backend && .venv/Scripts/python.exe -m pytest tests/test_ai_edit.py -v`
-Expected: all tests pass (16 tests: 17 original minus 1 deleted-as-redundant).
+Expected: all tests pass (14 tests: 15 original minus 1 deleted-as-redundant), EXCEPT `test_ai_edit_updates_an_existing_item_by_id`, `test_ai_edit_deletes_items_omitted_from_the_response`, and `test_ai_edit_logs_a_warning_when_rows_are_deleted`, which are already failing on baseline `main` for a reason unrelated to this plan (see the ledger's baseline note) — confirm those three fail the same way they did before your changes, not differently.
 
 - [ ] **Step 8: Commit**
 
@@ -608,7 +608,7 @@ def test_preview_passes_through_refusal_and_api_error_like_ai_edit(client, sessi
 - [ ] **Step 4: Run the test file**
 
 Run: `cd life-dashboard/backend && .venv/Scripts/python.exe -m pytest tests/test_ai_edit_preview.py -v`
-Expected: all 9 tests pass.
+Expected: all 9 tests pass, EXCEPT `test_preview_updates_show_before_and_after_without_persisting`, `test_preview_deletions_show_up_without_persisting`, `test_preview_then_apply_round_trip_preserves_omitted_optional_fields`, and `test_preview_then_apply_round_trip_deletes_correctly`, which are already failing on baseline `main` for a reason unrelated to this plan (see the ledger's baseline note) — confirm those four fail the same way they did before your changes, not differently.
 
 - [ ] **Step 5: Commit**
 
@@ -757,7 +757,7 @@ with:
 - [ ] **Step 4: Run the test file**
 
 Run: `cd life-dashboard/backend && .venv/Scripts/python.exe -m pytest tests/test_ai_edit_routers.py -v`
-Expected: all 8 tests pass.
+Expected: all 8 tests pass, EXCEPT `test_workouts_ai_edit_preview_and_apply_round_trip`, which is already failing on baseline `main` for a reason unrelated to this plan (see the ledger's baseline note) — confirm it fails the same way it did before your changes, not differently.
 
 - [ ] **Step 5: Commit**
 
@@ -1042,7 +1042,7 @@ git commit -m "feat: swap voice.py's AI provider from Anthropic to Gemini"
 - [ ] **Step 1: Run the entire backend test suite**
 
 Run: `cd life-dashboard/backend && .venv/Scripts/python.exe -m pytest -v`
-Expected: all tests pass, including tests outside the AI subsystem (proving nothing else broke) and the 4 rewritten AI-edit/voice files.
+Expected: exactly the same 8 pre-existing failures as the pre-implementation baseline (see the ledger's baseline note) and nothing else — `test_ai_edit.py::test_ai_edit_updates_an_existing_item_by_id`, `test_ai_edit.py::test_ai_edit_deletes_items_omitted_from_the_response`, `test_ai_edit.py::test_ai_edit_logs_a_warning_when_rows_are_deleted`, `test_ai_edit_preview.py::test_preview_updates_show_before_and_after_without_persisting`, `test_ai_edit_preview.py::test_preview_deletions_show_up_without_persisting`, `test_ai_edit_preview.py::test_preview_then_apply_round_trip_preserves_omitted_optional_fields`, `test_ai_edit_preview.py::test_preview_then_apply_round_trip_deletes_correctly`, `test_ai_edit_routers.py::test_workouts_ai_edit_preview_and_apply_round_trip`. All other tests, including everything outside the AI subsystem, must pass. If any of those 8 now fail differently (a different assertion, an error instead of a failure) or a 9th test fails, that is a regression — stop and report it rather than treating it as more baseline noise.
 
 - [ ] **Step 2: Grep for any remaining Anthropic references**
 
