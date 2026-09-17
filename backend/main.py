@@ -5,7 +5,7 @@ from fastapi import Depends, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
 
-from backend.routers.ai import make_ai_edit_router
+from backend.routers.ai import _local_today, make_ai_edit_router
 from backend.crud import make_crud_router
 from backend.database import get_session, init_db
 from backend.grocery_sync import (
@@ -82,7 +82,7 @@ def sync_meal_plan(
     week_of: date | None = Query(default=None),
     session: Session = Depends(get_session),
 ):
-    week_start = get_week_start(week_of or date.today())
+    week_start = get_week_start(week_of or _local_today())
     added = sync_meal_plan_to_groceries(session, week_start)
     return {"added": added, "week_of": week_start}
 

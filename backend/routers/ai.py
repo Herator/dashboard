@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, List, Optional, Type
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException
 from google import genai
@@ -66,8 +67,20 @@ def get_ai_client() -> genai.Client:
     return genai.Client(api_key=api_key)
 
 
+# The container runs with no TZ configured (Docker base images default to
+# UTC), so bare date.today()/datetime.now() drift a day off Oslo's actual
+# local date for a few hours around midnight (UTC+1/+2 depending on DST).
+# Same fix weather.py already applies to MET's timestamps, applied here to
+# "what day is it" instead.
+LOCAL_TZ = ZoneInfo("Europe/Oslo")
+
+
+def _local_today() -> date:
+    return datetime.now(LOCAL_TZ).date()
+
+
 def _current_week_bounds() -> tuple[date, date]:
-    today = date.today()
+    today = _local_today()
     start = today - timedelta(days=today.weekday())
     return start, start + timedelta(days=6)
 
@@ -169,7 +182,7 @@ def _ask_ai(
     scope_note: str,
 ):
     current_json = [item.model_dump(mode="json") for item in existing]
-    today = date.today()
+    today = _local_today()
     system_prompt = (
         f"Today is {today.isoformat()} ({today.strftime('%A')}). Resolve relative "
         "dates/times in the request (\"tomorrow\", \"next Tuesday\", \"in 3 days\") "
