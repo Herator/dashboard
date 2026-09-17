@@ -160,9 +160,11 @@ def _scoped_existing(
         else:
             query = query.where(column >= resolved_from, column <= resolved_to)
         scope_note = (
-            f" You are only shown, and may only affect, entries with "
-            f"{config.scope_field} between {resolved_from.isoformat()} and "
-            f"{resolved_to.isoformat()} inclusive."
+            f" You are only shown, and may only update or delete, existing "
+            f"entries with {config.scope_field} between {resolved_from.isoformat()} "
+            f"and {resolved_to.isoformat()} inclusive — a new entry you create for "
+            f"this request is not limited to that range; give it whatever "
+            f"{config.scope_field} the request actually specifies."
         )
     return session.exec(query).all(), scope_note
 
@@ -195,8 +197,10 @@ def _ask_ai(
         "request modifies them, modify entries the request refers to (preserve "
         "their `id`), omit entries the request asks to delete, and add new "
         "entries with `id` set to null for anything new the request asks to "
-        "create. Only include entries within what you were given — never invent "
-        "entries outside that scope."
+        "create — a new entry's date/time is whatever the request specifies, "
+        "not limited to the range described below (that range only bounds "
+        "which *existing* entries you were shown and can update or delete). "
+        "Never invent an existing entry (a real, non-null `id`) you weren't given."
         + scope_note
         + (" " + config.extra_instructions if config.extra_instructions else "")
     )
