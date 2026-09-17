@@ -16,45 +16,55 @@ jobs:
           curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared.deb
 
+      - name: Set up deploy SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.HOME_SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Write remote deploy script
+        run: |
+          cat > deploy_remote.sh <<'REMOTE_SCRIPT'
+          set -e
+          export DEPLOY_PATH="$HOME/docker/stack/dashboard"
+          export DEPLOY_BRANCH="main"
+          export GIT_REPO="__GIT_REPO__"
+
+          mkdir -p "$(dirname "$DEPLOY_PATH")"
+
+          if [ ! -d "$DEPLOY_PATH/.git" ]; then
+            git clone "$GIT_REPO" "$DEPLOY_PATH"
+          fi
+
+          cd "$DEPLOY_PATH"
+          git config --global --add safe.directory "$DEPLOY_PATH"
+          git fetch --all --prune
+          git checkout "$DEPLOY_BRANCH"
+          git pull --ff-only origin "$DEPLOY_BRANCH"
+
+          docker compose down --remove-orphans || true
+          docker compose up -d --build
+          docker compose ps
+          REMOTE_SCRIPT
+          sed -i "s#__GIT_REPO__#https://github.com/${{ github.repository }}.git#" deploy_remote.sh
+
       # SSH isn't exposed to the internet directly — it's reached through the
       # existing Cloudflare Tunnel's "ssh" Access application, gated by a
-      # Service Token (CF_ACCESS_CLIENT_ID/SECRET). This starts a local proxy
-      # on the runner at 127.0.0.1:2222 that forwards to the real sshd
-      # through Cloudflare; the actual SSH auth (HOME_SERVER_USER/SSH_KEY)
-      # still happens end-to-end on top of that, unchanged.
-      - name: Open Cloudflare Access tunnel to SSH
+      # Service Token. `cloudflared access ssh` is used as the SSH
+      # ProxyCommand so the real ssh client on this runner talks through the
+      # tunnel; normal key-based SSH auth (HOME_SERVER_USER/SSH_KEY) still
+      # happens end-to-end on top of that, unchanged. (A container-based ssh
+      # action doesn't work here: its 127.0.0.1 is a separate network
+      # namespace from the runner's, so a locally-proxied port isn't
+      # reachable from inside it — this runs ssh directly on the runner
+      # instead, sidestepping that entirely.)
+      - name: Deploy over SSH via Cloudflare Tunnel
         env:
           TUNNEL_SERVICE_TOKEN_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
           TUNNEL_SERVICE_TOKEN_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
-          cloudflared access tcp --hostname "${{ secrets.CF_SSH_HOSTNAME }}" --url 127.0.0.1:2222 &
-          sleep 5
-
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.0.1
-        with:
-          host: 127.0.0.1
-          port: 2222
-          username: ${{ secrets.HOME_SERVER_USER }}
-          key: ${{ secrets.HOME_SERVER_SSH_KEY }}
-          script: |
-            set -e
-            export DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '$HOME/docker/stack/dashboard' }}"
-            export DEPLOY_BRANCH="${{ secrets.DEPLOY_BRANCH || 'main' }}"
-            export GIT_REPO="${{ github.server_url }}/${{ github.repository }}.git"
-
-            mkdir -p "$(dirname "$DEPLOY_PATH")"
-
-            if [ ! -d "$DEPLOY_PATH/.git" ]; then
-              git clone "$GIT_REPO" "$DEPLOY_PATH"
-            fi
-
-            cd "$DEPLOY_PATH"
-            git config --global --add safe.directory "$DEPLOY_PATH"
-            git fetch --all --prune
-            git checkout "$DEPLOY_BRANCH"
-            git pull --ff-only origin "$DEPLOY_BRANCH"
-
-            docker compose down --remove-orphans || true
-            docker compose up -d --build
-            docker compose ps
+          ssh -o StrictHostKeyChecking=no \
+              -o "ProxyCommand=cloudflared access ssh --hostname %h" \
+              -i ~/.ssh/deploy_key \
+              "${{ secrets.HOME_SERVER_USER }}@${{ secrets.CF_SSH_HOSTNAME }}" \
+              'bash -s' < deploy_remote.sh
