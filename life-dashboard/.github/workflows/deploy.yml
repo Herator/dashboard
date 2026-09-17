@@ -1,0 +1,41 @@
+name: Deploy to Home Server
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.1
+        with:
+          host: ${{ secrets.HOME_SERVER_HOST }}
+          username: ${{ secrets.HOME_SERVER_USER }}
+          key: ${{ secrets.HOME_SERVER_SSH_KEY }}
+          port: ${{ secrets.HOME_SERVER_PORT || 22 }}
+          script: |
+            set -e
+            export DEPLOY_PATH="${{ secrets.DEPLOY_PATH || '$HOME/life-dashboard' }}"
+            export DEPLOY_BRANCH="${{ secrets.DEPLOY_BRANCH || 'main' }}"
+            export GIT_REPO="${{ github.server_url }}/${{ github.repository }}.git"
+
+            mkdir -p "$(dirname "$DEPLOY_PATH")"
+
+            if [ ! -d "$DEPLOY_PATH/.git" ]; then
+              git clone "$GIT_REPO" "$DEPLOY_PATH"
+            fi
+
+            cd "$DEPLOY_PATH"
+            git config --global --add safe.directory "$DEPLOY_PATH"
+            git fetch --all --prune
+            git checkout "$DEPLOY_BRANCH"
+            git pull --ff-only origin "$DEPLOY_BRANCH"
+
+            docker compose down --remove-orphans || true
+            docker compose up -d --build
+            docker compose ps
