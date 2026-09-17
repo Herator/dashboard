@@ -1,9 +1,11 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-import anthropic
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, ValidationError, create_model
+from google import genai
+from google.genai import errors as genai_errors
+from google.genai import types as genai_types
+from pydantic import BaseModel, create_model
 from sqlmodel import Session
 
 from backend.database import get_session
@@ -11,10 +13,11 @@ from backend.routers.ai import (
     AI_MODEL_ID,
     RESOURCE_REGISTRY,
     AiEditConfig,
-    _ask_claude,
+    _ask_ai,
+    _finish_reason,
     _reconcile,
     _scoped_existing,
-    get_anthropic_client,
+    get_ai_client,
 )
 
 logger = logging.getLogger(__name__)
@@ -32,8 +35,8 @@ class VoiceCommandResponse(BaseModel):
     speech: str
 
 
-def _classify_resource(client: anthropic.Anthropic, message: str) -> Optional[str]:
-    """Ask Claude which RESOURCE_REGISTRY key the message is about.
+def _classify_resource(client: genai.Client, message: str) -> Optional[str]:
+    """Ask Gemini which RESOURCE_REGISTRY key the message is about.
 
     Never raises — API errors, refusals, "doesn't match any resource", and a
     hallucinated key that isn't in the registry are all indistinguishable to
@@ -50,24 +53,27 @@ def _classify_resource(client: anthropic.Anthropic, message: str) -> Optional[st
         "fit:\n" + options
     )
     try:
-        response = client.messages.parse(
+        response = client.models.generate_content(
             model=AI_MODEL_ID,
-            max_tokens=64,
-            system=system_prompt,
-            messages=[{"role": "user", "content": message}],
-            output_format=_ClassifyResult,
+            contents=message,
+            config=genai_types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                max_output_tokens=64,
+                response_mime_type="application/json",
+                response_schema=_ClassifyResult,
+            ),
         )
-    except (anthropic.APIError, ValidationError):
+    except genai_errors.APIError:
         return None
 
-    if getattr(response, "stop_reason", None) == "refusal":
+    if _finish_reason(response) == "SAFETY":
         return None
 
-    parsed_output = getattr(response, "parsed_output", None)
-    if parsed_output is None:
+    parsed = getattr(response, "parsed", None)
+    if parsed is None:
         return None
 
-    resource_key = parsed_output.resource_key
+    resource_key = parsed.resource_key
     return resource_key if resource_key in RESOURCE_REGISTRY else None
 
 
@@ -97,7 +103,7 @@ def _describe_change(
 def voice_command(
     body: VoiceCommandRequest,
     session: Session = Depends(get_session),
-    client: anthropic.Anthropic = Depends(get_anthropic_client),
+    client: genai.Client = Depends(get_ai_client),
 ):
     resource_key = _classify_resource(client, body.message)
     if resource_key is None:
@@ -106,7 +112,7 @@ def voice_command(
     config = RESOURCE_REGISTRY[resource_key]
     existing, scope_note = _scoped_existing(config, None, None, session)
     try:
-        returned_items = _ask_claude(client, config, body.message, existing, scope_note)
+        returned_items = _ask_ai(client, config, body.message, existing, scope_note)
     except HTTPException:
         return VoiceCommandResponse(
             speech="Something went wrong updating that — try again in a bit."
