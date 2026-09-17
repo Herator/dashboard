@@ -24,6 +24,20 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["voice"])
 
+# Spoken confirmations are Norwegian — the Siri Shortcut's "Speak Text" step
+# uses a Norwegian voice, so English text read through it comes out mangled.
+# Only this user-facing speech is translated; RESOURCE_REGISTRY's
+# `resource_label` stays English since it also feeds the AI system prompt
+# (_ask_ai) and warning logs, which don't need to change.
+_RESOURCE_LABEL_NO = {
+    "meal-plan": "matplanen",
+    "workouts": "treningsplanen",
+    "reminders": "påminnelsene",
+    "calendar": "kalenderen",
+    "groceries": "handlelisten",
+    "filament": "filamentlisten",
+}
+
 _ClassifyResult = create_model("ClassifyResult", resource_key=(Optional[str], None))
 
 
@@ -78,24 +92,26 @@ def _classify_resource(client: genai.Client, message: str) -> Optional[str]:
 
 
 def _describe_change(
+    resource_key: str,
     config: AiEditConfig,
     created: List[Dict[str, Any]],
     updated: List[Dict[str, Any]],
     deleted: List[Dict[str, Any]],
 ) -> str:
-    """Build a short spoken confirmation from what `_reconcile` changed."""
+    """Build a short spoken confirmation (Norwegian) from what `_reconcile` changed."""
+    label = _RESOURCE_LABEL_NO[resource_key]
     parts = []
     if created:
-        names = ", ".join(str(item.get(config.primary_field, "an item")) for item in created)
-        parts.append(f"Added {names} to {config.resource_label}.")
+        names = ", ".join(str(item.get(config.primary_field, "et element")) for item in created)
+        parts.append(f"La til {names} i {label}.")
     if updated:
         count = len(updated)
-        parts.append(f"Updated {count} item{'s' if count != 1 else ''} in {config.resource_label}.")
+        parts.append(f"Oppdaterte {count} {'element' if count == 1 else 'elementer'} i {label}.")
     if deleted:
-        names = ", ".join(str(item.get(config.primary_field, "an item")) for item in deleted)
-        parts.append(f"Removed {names} from {config.resource_label}.")
+        names = ", ".join(str(item.get(config.primary_field, "et element")) for item in deleted)
+        parts.append(f"Fjernet {names} fra {label}.")
     if not parts:
-        return f"No changes made to {config.resource_label}."
+        return f"Ingen endringer gjort i {label}."
     return " ".join(parts)
 
 
@@ -107,7 +123,7 @@ def voice_command(
 ):
     resource_key = _classify_resource(client, body.message)
     if resource_key is None:
-        return VoiceCommandResponse(speech="I'm not sure what you meant — try rephrasing.")
+        return VoiceCommandResponse(speech="Jeg er ikke sikker på hva du mente — prøv å omformulere.")
 
     config = RESOURCE_REGISTRY[resource_key]
     existing, scope_note = _scoped_existing(config, None, None, session)
@@ -115,10 +131,10 @@ def voice_command(
         returned_items = _ask_ai(client, config, body.message, existing, scope_note)
     except HTTPException:
         return VoiceCommandResponse(
-            speech="Something went wrong updating that — try again in a bit."
+            speech="Noe gikk galt med oppdateringen — prøv igjen om litt."
         )
 
     created, updated, deleted, _ = _reconcile(
         config, session, existing, returned_items, commit=True, message=body.message
     )
-    return VoiceCommandResponse(speech=_describe_change(config, created, updated, deleted))
+    return VoiceCommandResponse(speech=_describe_change(resource_key, config, created, updated, deleted))

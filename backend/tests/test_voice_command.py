@@ -44,7 +44,7 @@ def test_voice_command_routes_to_groceries_and_creates_item(client, session):
     app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
-    assert resp.json() == {"speech": "Added Milk to grocery list."}
+    assert resp.json() == {"speech": "La til Milk i handlelisten."}
 
     list_resp = client.get("/api/groceries/")
     assert len(list_resp.json()) == 1
@@ -61,7 +61,7 @@ def test_voice_command_speaks_apology_when_classification_is_unclear(client, ses
     app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
-    assert resp.json() == {"speech": "I'm not sure what you meant — try rephrasing."}
+    assert resp.json() == {"speech": "Jeg er ikke sikker på hva du mente — prøv å omformulere."}
     assert mock_client.models.generate_content.call_count == 1  # never attempted an edit
 
 
@@ -77,7 +77,7 @@ def test_voice_command_speaks_apology_when_classification_key_is_unknown(client,
     app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
-    assert resp.json() == {"speech": "I'm not sure what you meant — try rephrasing."}
+    assert resp.json() == {"speech": "Jeg er ikke sikker på hva du mente — prøv å omformulere."}
 
 
 def test_voice_command_speaks_apology_when_edit_step_fails(client, session):
@@ -93,7 +93,7 @@ def test_voice_command_speaks_apology_when_edit_step_fails(client, session):
     app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
-    assert resp.json() == {"speech": "Something went wrong updating that — try again in a bit."}
+    assert resp.json() == {"speech": "Noe gikk galt med oppdateringen — prøv igjen om litt."}
 
 
 def test_voice_command_reports_updates_and_deletions(client, session):
@@ -125,7 +125,7 @@ def test_voice_command_reports_updates_and_deletions(client, session):
     app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
-    assert resp.json() == {"speech": "Updated 1 item in reminders."}
+    assert resp.json() == {"speech": "Oppdaterte 1 element i påminnelsene."}
 
 
 def test_voice_command_reports_a_deletion(client, session):
@@ -150,4 +150,4 @@ def test_voice_command_reports_a_deletion(client, session):
     app.dependency_overrides.pop(get_ai_client, None)
 
     assert resp.status_code == 200
-    assert resp.json() == {"speech": "Removed Old reminder from reminders."}
+    assert resp.json() == {"speech": "Fjernet Old reminder fra påminnelsene."}
