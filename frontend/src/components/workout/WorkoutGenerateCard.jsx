@@ -77,10 +77,9 @@ export default function WorkoutGenerateCard({ onGenerated }) {
 
   return (
     <div className="workout-generate-card">
-      <h2>Generate a workout</h2>
       <form onSubmit={handleGenerate} className="workout-generate-form">
         <textarea
-          placeholder="e.g. A quick upper body session"
+          placeholder="e.g. 30 minute upper body with dumbbells, nothing too heavy on shoulders"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           disabled={loading || !!preview}
@@ -129,15 +128,17 @@ export default function WorkoutGenerateCard({ onGenerated }) {
             />
           </div>
         )}
-        <button type="submit" className="workout-generate-submit" disabled={loading || !!preview}>
-          {loading && !preview ? (
-            <>
-              <span className="workout-spinner" aria-hidden="true" /> Generating…
-            </>
-          ) : (
-            "Generate workout"
-          )}
-        </button>
+        <div className="workout-generate-submit-row">
+          <button type="submit" className="workout-generate-submit" disabled={loading || !!preview}>
+            {loading && !preview ? (
+              <>
+                <span className="workout-spinner" aria-hidden="true" /> Generating…
+              </>
+            ) : (
+              <>✨ Generate workout</>
+            )}
+          </button>
+        </div>
       </form>
 
       {error && (

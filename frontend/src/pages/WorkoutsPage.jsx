@@ -82,6 +82,12 @@ export default function WorkoutsPage() {
             </>
           ) : (
             <>
+              <div className="workout-hero">
+                <h1>What are we training today?</h1>
+                <p className="workout-hero-sub">
+                  Describe the workout you want — goal, time you have, equipment — and it'll build one for you.
+                </p>
+              </div>
               <WorkoutGenerateCard
                 onGenerated={async () => {
                   bumpRefresh();

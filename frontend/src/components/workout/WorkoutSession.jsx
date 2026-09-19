@@ -89,97 +89,135 @@ export default function WorkoutSession({ workout, onExit, onFinish }) {
     setPhase("exercise");
   }
 
-  const nextStep = phase === "rest" ? steps[stepIndex] : null;
-  const nextExercise = nextStep ? exercises[nextStep.exerciseIndex] : null;
+  function jumpToExercise(exerciseIndex) {
+    const exercise = exercises[exerciseIndex];
+    const completed = completedStates(exercise);
+    let setIndex = completed.findIndex((done) => !done);
+    if (setIndex === -1) setIndex = 0;
+    const newStepIndex = steps.findIndex((s) => s.exerciseIndex === exerciseIndex && s.setIndex === setIndex);
+    if (newStepIndex === -1) return;
+    setPhase("exercise");
+    setRestRemaining(0);
+    setReps("");
+    setWeight("");
+    setStepIndex(newStepIndex);
+  }
+
+  const completed = completedStates(currentExercise);
+  const weights = weightStates(currentExercise);
+  const actualReps = actualRepsStates(currentExercise);
+  const setRows = Array.from({ length: currentExercise.sets }, (_, i) => {
+    const isCurrentRow = i === currentStep.setIndex;
+    const editable = isCurrentRow && phase === "exercise";
+    const done = completed[i];
+    return {
+      num: i + 1,
+      editable,
+      done,
+      weightDisplay: done && weights[i] != null ? weights[i] : "—",
+      repsDisplay: done ? actualReps[i] || currentExercise.reps : "—",
+      targetReps: currentExercise.reps,
+    };
+  });
 
   return (
     <div className="workout-session">
-      <div className="workout-session-side">
+      <div className="workout-session-topbar">
         <button type="button" className="workout-session-exit" onClick={onExit}>
-          Exit
+          ← Exit
         </button>
-        <div className="workout-session-strip">
-          {exercises.map((exercise, i) => (
-            <span
-              key={i}
-              className={`workout-pill workout-pill--${exerciseStatus(exercise, i, currentStep)}`}
-            >
-              {exercise.name}
-            </span>
-          ))}
+        <div className="workout-session-topbar-right">
+          <span className="workout-session-timer">{formatClock(elapsed)}</span>
+          {phase === "rest" && (
+            <span className="workout-tag workout-tag--rest">Rest {formatClock(restRemaining)}</span>
+          )}
         </div>
       </div>
 
-      <div className="workout-session-main">
-        <div className="workout-session-header">
-          <h2 className="workout-session-name">{workout.plan_text}</h2>
-          <div className="workout-session-meta">
-            <span className="workout-session-step">
-              Step {stepIndex + 1} of {steps.length}
-            </span>
-            <span className="workout-session-timer">{formatClock(elapsed)}</span>
-          </div>
+      <div className="workout-session-strip">
+        {exercises.map((exercise, i) => (
+          <button
+            type="button"
+            key={i}
+            className={`workout-tile workout-tile--${exerciseStatus(exercise, i, currentStep)}`}
+            onClick={() => jumpToExercise(i)}
+          >
+            {exercise.name.charAt(0).toUpperCase()}
+          </button>
+        ))}
+      </div>
+
+      <h2 className="workout-session-name">{currentExercise.name}</h2>
+      <p className="workout-session-set-label">
+        Set {currentStep.setIndex + 1} of {currentExercise.sets} · target {currentExercise.reps} reps
+      </p>
+
+      {currentExercise.cue && <p className="workout-session-cue">{currentExercise.cue}</p>}
+
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {phase === "rest" && (
+        <div className="workout-session-rest-banner">
+          <span>
+            Resting · up next {currentExercise.name} · set {currentStep.setIndex + 1} of {currentExercise.sets}
+          </span>
+          <button type="button" className="workout-skip-rest" onClick={handleSkipRest}>
+            Skip
+          </button>
         </div>
+      )}
 
-        <div className="workout-session-progress">
-          <div
-            className="workout-session-progress-fill"
-            style={{ width: `${(stepIndex / steps.length) * 100}%` }}
-          />
+      <div className="workout-set-table">
+        <div className="workout-set-table-header">
+          <span>Set</span>
+          <span>{settings.units}</span>
+          <span>Reps</span>
+          <span></span>
         </div>
-
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
-
-        {phase === "exercise" ? (
-          <div className="workout-session-exercise">
-            {currentExercise.muscle && <span className="workout-tag">{currentExercise.muscle}</span>}
-            <h2>{currentExercise.name}</h2>
-            {currentExercise.cue && <p className="workout-session-cue">{currentExercise.cue}</p>}
-            <p className="workout-session-set-label">
-              Set {currentStep.setIndex + 1} of {currentExercise.sets} · target {currentExercise.reps} reps
-            </p>
-            <div className="workout-session-inputs">
-              <label>
-                Reps
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder={currentExercise.reps}
-                  value={reps}
-                  onChange={(e) => setReps(e.target.value)}
-                />
-              </label>
-              <label>
-                Weight ({settings.units})
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.5"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                />
-              </label>
-            </div>
-            <button type="button" className="workout-start-button" onClick={handleCompleteSet}>
-              {isLastStep ? "Finish workout" : "Complete set"}
+        {setRows.map((row) => (
+          <div key={row.num} className="workout-set-row">
+            <span className="workout-set-num">{row.num}</span>
+            {row.editable ? (
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.5"
+                value={weight}
+                onChange={(e) => setWeight(e.target.value)}
+              />
+            ) : (
+              <span className={`workout-set-static${row.done ? "" : " workout-set-static--pending"}`}>
+                {row.weightDisplay}
+              </span>
+            )}
+            {row.editable ? (
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder={row.targetReps}
+                value={reps}
+                onChange={(e) => setReps(e.target.value)}
+              />
+            ) : (
+              <span className={`workout-set-static${row.done ? "" : " workout-set-static--pending"}`}>
+                {row.repsDisplay}
+              </span>
+            )}
+            <button
+              type="button"
+              className={`workout-set-toggle${row.done ? " workout-set-toggle--done" : ""}`}
+              disabled={!row.editable || row.done}
+              aria-label="Mark set done"
+              onClick={handleCompleteSet}
+            >
+              {row.done && "✓"}
             </button>
           </div>
-        ) : (
-          <div className="workout-session-rest">
-            <span className="workout-session-rest-label">REST</span>
-            <span className="workout-rest-countdown">{formatClock(restRemaining)}</span>
-            <p className="workout-session-up-next">
-              Up next: {nextExercise.name} · Set {nextStep.setIndex + 1} of {nextExercise.sets}
-            </p>
-            <button type="button" className="workout-skip-rest" onClick={handleSkipRest}>
-              Skip rest
-            </button>
-          </div>
-        )}
+        ))}
       </div>
     </div>
   );
