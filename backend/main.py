@@ -10,6 +10,7 @@ from backend.routers.ai import _local_today, make_ai_edit_router, make_meal_reci
 from backend.crud import make_crud_router
 from backend.database import get_session, init_db
 from backend.grocery_sync import (
+    fill_price_weight_hook,
     get_week_start,
     sync_meal_plan_to_groceries,
     sync_week_for_meal,
@@ -98,7 +99,14 @@ app.include_router(
 )
 app.include_router(make_ai_edit_router("meal-plan", "/api/meal-plan", "meal-plan-ai"))
 app.include_router(make_meal_recipe_router())
-app.include_router(make_crud_router(GroceryItem, "/api/groceries", "groceries"))
+app.include_router(
+    make_crud_router(
+        GroceryItem,
+        "/api/groceries",
+        "groceries",
+        post_mutation_hook=fill_price_weight_hook,
+    )
+)
 app.include_router(make_crud_router(Workout, "/api/workouts", "workouts"))
 app.include_router(make_ai_edit_router("workouts", "/api/workouts", "workouts-ai"))
 app.include_router(make_crud_router(WorkoutSchedule, "/api/workout-schedule", "workout-schedule"))

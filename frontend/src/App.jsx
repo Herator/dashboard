@@ -2,11 +2,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import WorkoutsPage from "./pages/WorkoutsPage";
 import MealPlanPage from "./pages/MealPlanPage";
+import GroceryPage from "./pages/GroceryPage";
 import ResourcePage from "./components/ResourcePage";
 import { RESOURCES } from "./resourceConfigs";
 import "./App.css";
 
-const CUSTOM_PAGE_ROUTES = ["workouts", "meal-plan"];
+const CUSTOM_PAGE_ROUTES = ["workouts", "meal-plan", "groceries"];
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/workouts" element={<WorkoutsPage />} />
         <Route path="/meal-plan" element={<MealPlanPage />} />
+        <Route path="/groceries" element={<GroceryPage />} />
         {RESOURCES.filter((resource) => !CUSTOM_PAGE_ROUTES.includes(resource.key)).map((resource) => (
           <Route
             key={resource.key}

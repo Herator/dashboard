@@ -2,8 +2,14 @@ from datetime import date, timedelta
 
 from sqlmodel import Session, select
 
-from backend.grocery_sync import get_week_start, sync_meal_plan_to_groceries
+from backend.grocery_sync import categorize, get_week_start, sync_meal_plan_to_groceries
 from backend.models import GroceryItem, MealPlanItem, MealSlot
+
+
+def test_categorize_matches_known_keywords_and_falls_back_to_other():
+    assert categorize("Kyllingfilet") == "Kjøtt"
+    assert categorize("Melk") == "Meieri"
+    assert categorize("Widget") == "Annet"
 
 
 def test_get_week_start():
@@ -196,6 +202,57 @@ def test_delete_meal_plan_keeps_existing_groceries(client, session: Session):
 
     after = {g.name for g in session.exec(select(GroceryItem)).all()}
     assert after == before  # additive: delete must not remove groceries
+
+
+def test_create_grocery_item_autofills_price_and_weight_from_history(client, session: Session):
+    session.add(
+        GroceryItem(name="Melk", week_of=date(2026, 9, 7), checked=True, price="24.90", weight="1 L")
+    )
+    session.commit()
+
+    resp = client.post(
+        "/api/groceries/",
+        json={"name": "Melk", "week_of": "2026-09-14", "checked": False},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["price"] == "24.90"
+    assert body["weight"] == "1 L"
+
+
+def test_create_grocery_item_explicit_price_not_overwritten(client, session: Session):
+    session.add(
+        GroceryItem(name="Egg", week_of=date(2026, 9, 7), checked=True, price="42.90", weight=None)
+    )
+    session.commit()
+
+    resp = client.post(
+        "/api/groceries/",
+        json={"name": "Egg", "week_of": "2026-09-14", "checked": False, "price": "39.90"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["price"] == "39.90"  # explicit value wins over history
+
+
+def test_sync_meal_plan_autofills_price_and_weight_from_history(session: Session):
+    session.add(
+        GroceryItem(name="Laks", week_of=date(2026, 9, 7), checked=True, price="89.00", weight="0.4 kg")
+    )
+    session.add(
+        MealPlanItem(
+            date=date(2026, 9, 16),
+            meal_slot=MealSlot.dinner,
+            name="Fish dinner",
+            ingredients=["Laks"],
+        )
+    )
+    session.commit()
+
+    added = sync_meal_plan_to_groceries(session, date(2026, 9, 14))
+
+    assert added[0].name == "Laks"
+    assert added[0].price == "89.00"
+    assert added[0].weight == "0.4 kg"
 
 
 def test_ai_apply_meal_plan_auto_syncs_groceries(client, session: Session):

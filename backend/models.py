@@ -102,6 +102,9 @@ class MealPlanItem(SQLModel, table=True):
     meal_slot: MealSlot
     name: str
     ingredients: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+    # Free text, filled in after cooking (e.g. "300g kylling, 1 løk") — how
+    # much of the shopped ingredients this particular meal actually used.
+    amount_used: Optional[str] = None
 
 
 class MealPreferences(SQLModel, table=True):
@@ -121,8 +124,14 @@ class GroceryItem(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     quantity: Optional[str] = None
+    category: Optional[str] = None
     checked: bool = False
     week_of: date
+    # Logged while shopping. Free text (matches the design's "0,00 kr" /
+    # "0.5 kg" inputs) rather than a number — the total is summed client-side
+    # after a lenient parse, same as the design reference.
+    price: Optional[str] = None
+    weight: Optional[str] = None
 
 
 class Workout(SQLModel, table=True):

@@ -9,6 +9,7 @@ export default function MealFormDialog({ target, dayLabel, onClose, onSaved }) {
   const editing = target.item;
   const [name, setName] = useState(editing?.name || "");
   const [ingredients, setIngredients] = useState(editing?.ingredients?.join(", ") || "");
+  const [amountUsed, setAmountUsed] = useState(editing?.amount_used || "");
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -24,6 +25,7 @@ export default function MealFormDialog({ target, dayLabel, onClose, onSaved }) {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
+      amount_used: amountUsed.trim() || null,
     };
     try {
       if (editing) {
@@ -64,6 +66,14 @@ export default function MealFormDialog({ target, dayLabel, onClose, onSaved }) {
           <label>
             Ingredients (comma-separated)
             <input value={ingredients} onChange={(e) => setIngredients(e.target.value)} />
+          </label>
+          <label>
+            Amount used
+            <input
+              value={amountUsed}
+              placeholder="e.g. 300g chicken, 1 onion"
+              onChange={(e) => setAmountUsed(e.target.value)}
+            />
           </label>
           <div className="meal-dialog-actions">
             <button type="button" onClick={onClose}>

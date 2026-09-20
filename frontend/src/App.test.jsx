@@ -33,9 +33,9 @@ describe("App", () => {
     expect(await screen.findByText("Life Dashboard")).toBeInTheDocument();
   });
 
-  it("renders the Groceries ResourcePage at /groceries", async () => {
+  it("renders the custom Groceries page at /groceries", async () => {
     window.history.pushState({}, "", "/groceries");
     render(<App />);
-    expect(await screen.findByRole("heading", { name: "Groceries" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Innkjøpsliste" })).toBeInTheDocument();
   });
 });

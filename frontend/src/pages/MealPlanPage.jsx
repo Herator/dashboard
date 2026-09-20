@@ -159,6 +159,7 @@ export default function MealPlanPage() {
                           ))}
                         </div>
                       )}
+                      {meal.amount_used && <p className="meal-slot-used">Used: {meal.amount_used}</p>}
                     </div>
                   );
                 })}

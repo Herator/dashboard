@@ -16,6 +16,7 @@ export const RESOURCES = [
       { name: "meal_slot", label: "Meal", type: "select", options: ["breakfast", "lunch", "dinner", "snack"], required: true },
       { name: "name", label: "Name", type: "text", required: true },
       { name: "ingredients", label: "Ingredients (comma-separated)", type: "list" },
+      { name: "amount_used", label: "Amount Used", type: "text" },
     ],
   },
   {
@@ -28,6 +29,8 @@ export const RESOURCES = [
       { name: "quantity", label: "Quantity", type: "text" },
       { name: "checked", label: "Checked", type: "checkbox" },
       { name: "week_of", label: "Week Of", type: "date", required: true },
+      { name: "price", label: "Price (NOK)", type: "text" },
+      { name: "weight", label: "Weight/Volume", type: "text" },
     ],
   },
   {

@@ -49,6 +49,13 @@ export default function MealRecipeDialog({ meal, dayLabel, stepsCache, onStepsLo
           </div>
         )}
 
+        {meal.amount_used && (
+          <div className="meal-dialog-section">
+            <h4>Used for this meal</h4>
+            <p>{meal.amount_used}</p>
+          </div>
+        )}
+
         <div className="meal-dialog-section">
           <h4>How to make it</h4>
           {loading && <p className="widget-empty">Asking the AI for steps…</p>}
