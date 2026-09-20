@@ -9,6 +9,32 @@ function formatClock(totalSeconds) {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+function Stepper({ value, onChange, step, min = 0, placeholder }) {
+  const numeric = value === "" ? Number(placeholder) || 0 : Number(value);
+  function bump(delta) {
+    const next = Math.max(min, Math.round((numeric + delta) * 100) / 100);
+    onChange(String(next));
+  }
+  return (
+    <div className="workout-stepper">
+      <button type="button" className="workout-stepper-btn" onClick={() => bump(-step)} aria-label="Decrease">
+        −
+      </button>
+      <input
+        type="number"
+        inputMode="decimal"
+        step={step}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <button type="button" className="workout-stepper-btn" onClick={() => bump(step)} aria-label="Increase">
+        +
+      </button>
+    </div>
+  );
+}
+
 function exerciseStatus(exercise, exerciseIndex, currentStep) {
   if (exerciseIndex === currentStep.exerciseIndex) return "active";
   if (completedStates(exercise).every(Boolean)) return "completed";
@@ -182,26 +208,14 @@ export default function WorkoutSession({ workout, onExit, onFinish }) {
           <div key={row.num} className="workout-set-row">
             <span className="workout-set-num">{row.num}</span>
             {row.editable ? (
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.5"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-              />
+              <Stepper value={weight} onChange={setWeight} step={0.5} />
             ) : (
               <span className={`workout-set-static${row.done ? "" : " workout-set-static--pending"}`}>
                 {row.weightDisplay}
               </span>
             )}
             {row.editable ? (
-              <input
-                type="number"
-                inputMode="numeric"
-                placeholder={row.targetReps}
-                value={reps}
-                onChange={(e) => setReps(e.target.value)}
-              />
+              <Stepper value={reps} onChange={setReps} step={1} placeholder={row.targetReps} />
             ) : (
               <span className={`workout-set-static${row.done ? "" : " workout-set-static--pending"}`}>
                 {row.repsDisplay}
