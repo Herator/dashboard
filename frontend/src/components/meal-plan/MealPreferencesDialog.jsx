@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getMealPreferences, updateMealPreferences } from "../../lib/api";
+import AiEditBox from "../AiEditBox";
 
 function TagInput({ label, verb, values, onAdd, onRemove, variant }) {
   const [input, setInput] = useState("");
@@ -58,6 +59,12 @@ export default function MealPreferencesDialog({ onClose }) {
     }
   }
 
+  async function refetch() {
+    const data = await getMealPreferences();
+    setLikes(data.likes);
+    setDislikes(data.dislikes);
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal meal-dialog" onClick={(e) => e.stopPropagation()}>
@@ -95,6 +102,15 @@ export default function MealPreferencesDialog({ onClose }) {
             />
           </div>
         )}
+
+        <div className="meal-dialog-section">
+          <h4>Or tell the AI</h4>
+          <AiEditBox
+            resourceKey="meal-preferences"
+            primaryField="likes"
+            onApplied={refetch}
+          />
+        </div>
 
         <div className="meal-dialog-actions">
           <button type="button" className="meal-btn-primary" onClick={onClose}>

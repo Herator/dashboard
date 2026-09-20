@@ -131,6 +131,11 @@ RESOURCE_REGISTRY: Dict[str, AiEditConfig] = {
         GroceryItem, "grocery list", scope_field="week_of", primary_field="name"
     ),
     "filament": AiEditConfig(FilamentSpool, "filament spool", primary_field="color_name"),
+    # Singleton row (id=1, see MealPreferences docstring) — the generic
+    # create/update/delete reconciliation still applies, just always against
+    # that one row: the AI is shown it, must echo its `id` back to change it,
+    # and an update is the only outcome the request should ever produce.
+    "meal-preferences": AiEditConfig(MealPreferences, "food likes/dislikes", primary_field="likes"),
 }
 
 
