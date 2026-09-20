@@ -16,7 +16,7 @@ from sqlmodel import Session, SQLModel, select
 from backend.crud import build_input_model
 from backend.database import get_session
 from backend.grocery_sync import get_week_start, sync_meal_plan_to_groceries
-from backend.models import Event, FilamentSpool, GroceryItem, MealPlanItem, Reminder, Workout
+from backend.models import Event, FilamentSpool, GroceryItem, MealPlanItem, MealPreferences, Reminder, Workout
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +167,20 @@ def _scoped_existing(
             f"{config.scope_field} the request actually specifies."
         )
     return session.exec(query).all(), scope_note
+
+
+def _meal_preference_note(session: Session) -> str:
+    """Extra system-prompt text steering meal-plan suggestions around the
+    user's stored likes/dislikes. Empty once nothing's been recorded."""
+    prefs = session.get(MealPreferences, 1)
+    if prefs is None or (not prefs.likes and not prefs.dislikes):
+        return ""
+    parts = []
+    if prefs.likes:
+        parts.append(f"likes: {', '.join(prefs.likes)}")
+    if prefs.dislikes:
+        parts.append(f"dislikes (avoid these): {', '.join(prefs.dislikes)}")
+    return " The user's food preferences — " + "; ".join(parts) + " — should inform any meal you suggest or create."
 
 
 def _finish_reason(response: genai_types.GenerateContentResponse) -> Optional[str]:
@@ -361,6 +375,8 @@ def make_ai_edit_router(resource_key: str, prefix: str, tag: str) -> APIRouter:
         client: genai.Client = Depends(get_ai_client),
     ):
         existing, scope_note = _scoped_existing(config, body.date_from, body.date_to, session)
+        if resource_key == "meal-plan":
+            scope_note += _meal_preference_note(session)
         returned_items = _ask_ai(client, config, body.message, existing, scope_note)
         _, _, _, result_rows = _reconcile(
             config, session, existing, returned_items, commit=True, message=body.message
@@ -374,6 +390,8 @@ def make_ai_edit_router(resource_key: str, prefix: str, tag: str) -> APIRouter:
         client: genai.Client = Depends(get_ai_client),
     ):
         existing, scope_note = _scoped_existing(config, body.date_from, body.date_to, session)
+        if resource_key == "meal-plan":
+            scope_note += _meal_preference_note(session)
         returned_items = _ask_ai(client, config, body.message, existing, scope_note)
         created, updated, deleted, _ = _reconcile(config, session, existing, returned_items, commit=False)
         items = [
@@ -406,5 +424,50 @@ def make_ai_edit_router(resource_key: str, prefix: str, tag: str) -> APIRouter:
             for row in result_rows:
                 session.refresh(row)  # sync's commit expired the rows
         return result_rows
+
+    return router
+
+
+class RecipeStepsResponse(BaseModel):
+    steps: List[str]
+
+
+def make_meal_recipe_router() -> APIRouter:
+    """One-off endpoint (not part of RESOURCE_REGISTRY): generates cooking
+    steps for a meal on demand. Steps aren't stored on MealPlanItem, so
+    there's nothing to keep in sync — the client re-requests them each time
+    a recipe dialog opens."""
+    router = APIRouter(prefix="/api/meal-plan", tags=["meal-plan-ai"])
+
+    @router.post("/{item_id}/recipe", response_model=RecipeStepsResponse)
+    def recipe_steps(
+        item_id: int,
+        session: Session = Depends(get_session),
+        client: genai.Client = Depends(get_ai_client),
+    ):
+        item = session.get(MealPlanItem, item_id)
+        if item is None:
+            raise HTTPException(status_code=404, detail="Meal not found.")
+        ingredients_note = f" using {', '.join(item.ingredients)}" if item.ingredients else ""
+        try:
+            response = client.models.generate_content(
+                model=AI_MODEL_ID,
+                contents=(
+                    f"Give concise numbered cooking steps for preparing "
+                    f"'{item.name}'{ingredients_note}. 3-6 short steps."
+                ),
+                config=genai_types.GenerateContentConfig(
+                    max_output_tokens=1024,
+                    response_mime_type="application/json",
+                    response_schema=RecipeStepsResponse,
+                ),
+            )
+        except genai_errors.APIError as exc:
+            raise HTTPException(status_code=502, detail=f"AI request failed: {exc}")
+
+        parsed = getattr(response, "parsed", None)
+        if parsed is None:
+            raise HTTPException(status_code=502, detail="AI returned no usable response.")
+        return parsed
 
     return router

@@ -2109,3 +2109,335 @@
     flex-wrap: wrap;
   }
 }
+
+/* --- Meal plan page ------------------------------------------------------- */
+
+.meal-plan-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.meal-plan-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.meal-plan-badge {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface-2));
+}
+
+.meal-plan-subtitle {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+
+.meal-plan-week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.meal-plan-week-controls,
+.meal-plan-week-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.meal-plan-week-chevron {
+  min-height: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.meal-plan-week-label {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  white-space: nowrap;
+}
+
+.meal-plan-synced {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-school);
+  white-space: nowrap;
+}
+
+.meal-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1rem;
+}
+
+.meal-plan-day-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.meal-plan-day-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0.7rem 1rem;
+  background: var(--surface-2);
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+}
+
+/* Alternating tint on every third card gives the week a bit of rhythm
+   instead of seven identical strips. */
+.meal-plan-day-card:nth-child(3n + 1) .meal-plan-day-card-header {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
+}
+
+.meal-plan-day-card-date {
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+.meal-plan-day-card-body {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.meal-slot {
+  position: relative;
+  border-radius: 14px;
+  background: var(--surface-2);
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.meal-slot-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.meal-slot-actions {
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.meal-slot:hover .meal-slot-actions,
+.meal-slot:focus-within .meal-slot-actions {
+  opacity: 1;
+}
+
+/* Hover-reveal only works with a mouse — on the wall tablet (touch, no
+   hover) it would leave edit/delete permanently invisible, not just tidy. */
+@media (hover: none) {
+  .meal-slot-actions {
+    opacity: 1;
+  }
+}
+
+.meal-slot-icon-btn {
+  min-height: 0;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  font-size: 0.75rem;
+}
+
+.meal-slot-icon-btn:hover {
+  border-color: var(--accent);
+}
+
+.meal-slot-name {
+  margin: 0.4rem 0 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.meal-slot-ingredients {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.meal-slot-ingredients span {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  background: var(--bg);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+.meal-slot-empty {
+  border: 1.5px dashed var(--border);
+  border-radius: 14px;
+  background: transparent;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.meal-slot-empty:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.meal-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-dim);
+}
+
+.meal-tag--accent {
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface-2));
+  color: var(--accent);
+}
+
+.meal-tag--accent-2 {
+  background: color-mix(in srgb, var(--accent-school) 22%, var(--surface-2));
+  color: var(--accent-school);
+}
+
+.meal-tag--outline {
+  background: transparent;
+  border: 1px solid var(--border);
+}
+
+.meal-tag--removable {
+  cursor: pointer;
+  min-height: 0;
+  border: none;
+}
+
+.meal-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+/* --- Meal plan dialogs (recipe / preferences / add-edit) ------------------ */
+
+.meal-dialog {
+  max-width: 460px;
+}
+
+.meal-dialog-title {
+  margin: 0.2rem 0 0;
+  font-size: 1.2rem;
+}
+
+.meal-dialog-section {
+  margin-top: 1rem;
+}
+
+.meal-dialog-section h4 {
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+}
+
+.meal-recipe-steps {
+  margin: 0;
+  padding-left: 1.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.meal-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.meal-btn-primary {
+  border-radius: 999px;
+  padding: 0 1.3rem;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+.meal-prefs-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+.meal-prefs-add-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.meal-prefs-add-form input {
+  flex: 1;
+}
+
+.meal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.meal-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}

@@ -104,6 +104,17 @@ class MealPlanItem(SQLModel, table=True):
     ingredients: List[str] = Field(default_factory=list, sa_column=Column(JSON))
 
 
+class MealPreferences(SQLModel, table=True):
+    """Singleton row (id=1) of food likes/dislikes the AI honors when editing
+    the meal plan. Not tied to a user account — this app has exactly one."""
+
+    __tablename__ = "meal_preferences"
+
+    id: Optional[int] = Field(default=1, primary_key=True)
+    likes: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+    dislikes: List[str] = Field(default_factory=list, sa_column=Column(JSON))
+
+
 class GroceryItem(SQLModel, table=True):
     __tablename__ = "grocery_items"
 

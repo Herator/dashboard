@@ -55,6 +55,18 @@ export function syncGroceriesFromMealPlan(weekOf) {
   return request(`/api/groceries/sync-meal-plan${query}`, { method: "POST" });
 }
 
+export function getMealPreferences() {
+  return request(`/api/meal-plan/preferences`);
+}
+
+export function updateMealPreferences(payload) {
+  return request(`/api/meal-plan/preferences`, { method: "PUT", body: JSON.stringify(payload) });
+}
+
+export function getMealRecipeSteps(itemId) {
+  return request(`/api/meal-plan/${itemId}/recipe`, { method: "POST" });
+}
+
 export function getWeather() {
   return request(`/api/weather/`);
 }

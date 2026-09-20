@@ -3,9 +3,10 @@ from datetime import date
 
 from fastapi import Depends, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sqlmodel import Session
 
-from backend.routers.ai import _local_today, make_ai_edit_router
+from backend.routers.ai import _local_today, make_ai_edit_router, make_meal_recipe_router
 from backend.crud import make_crud_router
 from backend.database import get_session, init_db
 from backend.grocery_sync import (
@@ -20,6 +21,7 @@ from backend.routers import voice
 from backend.models import (
     Event,
     MealPlanItem,
+    MealPreferences,
     GroceryItem,
     Workout,
     WorkoutSchedule,
@@ -47,6 +49,44 @@ def on_startup():
     init_db()
 
 
+class MealPreferencesPayload(BaseModel):
+    likes: list[str] = []
+    dislikes: list[str] = []
+
+
+def _get_or_create_meal_preferences(session: Session) -> MealPreferences:
+    prefs = session.get(MealPreferences, 1)
+    if prefs is None:
+        prefs = MealPreferences(id=1)
+        session.add(prefs)
+        session.commit()
+        session.refresh(prefs)
+    return prefs
+
+
+# Registered before the meal-plan CRUD router below: both define a route
+# shaped `/api/meal-plan/<single segment>`, and Starlette matches route
+# patterns in registration order, not by specificity — placed after,
+# `/api/meal-plan/{item_id}` (item_id: int) would claim `.../preferences`
+# first and 422 rather than ever reaching these.
+@app.get("/api/meal-plan/preferences", response_model=MealPreferences)
+def get_meal_preferences(session: Session = Depends(get_session)):
+    return _get_or_create_meal_preferences(session)
+
+
+@app.put("/api/meal-plan/preferences", response_model=MealPreferences)
+def update_meal_preferences(
+    payload: MealPreferencesPayload, session: Session = Depends(get_session)
+):
+    prefs = _get_or_create_meal_preferences(session)
+    prefs.likes = payload.likes
+    prefs.dislikes = payload.dislikes
+    session.add(prefs)
+    session.commit()
+    session.refresh(prefs)
+    return prefs
+
+
 app.include_router(make_crud_router(Event, "/api/events", "events"))
 app.include_router(
     make_crud_router(
@@ -57,6 +97,7 @@ app.include_router(
     )
 )
 app.include_router(make_ai_edit_router("meal-plan", "/api/meal-plan", "meal-plan-ai"))
+app.include_router(make_meal_recipe_router())
 app.include_router(make_crud_router(GroceryItem, "/api/groceries", "groceries"))
 app.include_router(make_crud_router(Workout, "/api/workouts", "workouts"))
 app.include_router(make_ai_edit_router("workouts", "/api/workouts", "workouts-ai"))

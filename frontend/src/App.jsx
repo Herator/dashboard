@@ -1,9 +1,12 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import WorkoutsPage from "./pages/WorkoutsPage";
+import MealPlanPage from "./pages/MealPlanPage";
 import ResourcePage from "./components/ResourcePage";
 import { RESOURCES } from "./resourceConfigs";
 import "./App.css";
+
+const CUSTOM_PAGE_ROUTES = ["workouts", "meal-plan"];
 
 export default function App() {
   return (
@@ -11,7 +14,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/workouts" element={<WorkoutsPage />} />
-        {RESOURCES.filter((resource) => resource.key !== "workouts").map((resource) => (
+        <Route path="/meal-plan" element={<MealPlanPage />} />
+        {RESOURCES.filter((resource) => !CUSTOM_PAGE_ROUTES.includes(resource.key)).map((resource) => (
           <Route
             key={resource.key}
             path={`/${resource.key}`}
