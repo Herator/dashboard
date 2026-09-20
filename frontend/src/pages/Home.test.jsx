@@ -41,7 +41,7 @@ describe("Home", () => {
     );
   });
 
-  it("renders the weather, calendar and meal-plan widgets", async () => {
+  it("renders the weather and calendar widgets, but not the full meal-plan grid", async () => {
     render(
       <MemoryRouter>
         <Home />
@@ -49,6 +49,7 @@ describe("Home", () => {
     );
     expect(await screen.findByText("This Week's Weather")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Calendar" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Meal Plan" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Meal Plan" })).not.toBeInTheDocument();
+    expect(screen.getByText("Today's Meals")).toBeInTheDocument();
   });
 });

@@ -4,7 +4,6 @@ import { RESOURCES } from "../resourceConfigs";
 import TodayHero from "../components/widgets/TodayHero";
 import WeatherWidget from "../components/widgets/WeatherWidget";
 import CalendarWidget from "../components/widgets/CalendarWidget";
-import MealPlanWidget from "../components/widgets/MealPlanWidget";
 import ExamCountdownWidget from "../components/widgets/ExamCountdownWidget";
 import PrinterWidget from "../components/widgets/PrinterWidget";
 
@@ -62,7 +61,6 @@ export default function Home() {
       <div className="dashboard-grid">
         <div className="dashboard-main">
           <CalendarWidget />
-          <MealPlanWidget />
         </div>
 
         <aside className="dashboard-sidebar">
