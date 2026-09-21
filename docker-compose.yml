@@ -3,34 +3,36 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    # Long form with required: false so `docker compose` still validates (and
+    # the frontend service still comes up) before anyone has created a .env.
     env_file:
       - path: .env
         required: false
     ports:
       - "8080:8000"
     volumes:
+      # database.py resolves its data dir relative to its own file
+      # location (backend/database.py), which lands at /app/backend/data
+      # inside the image given the Dockerfile's COPY . ./backend layout.
       - life-dashboard-data:/app/backend/data
     restart: unless-stopped
-    develop:
-      watch:
-        - action: rebuild
-          path: ./backend
 
   life-dashboard-frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
+        # Baked into the built JS at image-build time, so it must be the
+        # browser-facing URL, not a container-internal one. Defaults to
+        # localhost for local/dev use; set PUBLIC_URL in .env for a real
+        # deployment (e.g. https://home.example.com) so the frontend calls
+        # the backend at a URL a phone off the home network can reach.
         VITE_API_BASE_URL: ${PUBLIC_URL:-http://localhost:8080}
     ports:
       - "5173:80"
     depends_on:
       - life-dashboard-backend
     restart: unless-stopped
-    develop:
-      watch:
-        - action: rebuild
-          path: ./frontend
 
 volumes:
   life-dashboard-data:
