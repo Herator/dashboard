@@ -88,7 +88,7 @@ def update_meal_preferences(
     return prefs
 
 
-app.include_router(make_ai_edit_router("meal-preferences", "/api/meal-plan/preferences", "meal-preferences-ai"))
+app.include_router(make_ai_edit_router("meal-preferences", "/api/meal-preferences", "meal-preferences-ai"))
 app.include_router(make_crud_router(Event, "/api/events", "events"))
 app.include_router(
     make_crud_router(

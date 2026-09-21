@@ -245,7 +245,7 @@ def test_meal_preferences_ai_edit_updates_the_singleton_row(client, session):
     app.dependency_overrides[get_ai_client] = lambda: mock_client
 
     resp = client.post(
-        "/api/meal-plan/preferences/ai-edit",
+        "/api/meal-preferences/ai-edit",
         json={"message": "I don't like mushrooms"},
     )
 

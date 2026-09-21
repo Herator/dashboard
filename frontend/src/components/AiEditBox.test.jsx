@@ -96,6 +96,24 @@ describe("AiEditBox", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("ANTHROPIC_API_KEY");
   });
 
+  it("shows a loading state on Suggest while the request is in flight", async () => {
+    let resolvePreview;
+    const pending = new Promise((resolve) => {
+      resolvePreview = resolve;
+    });
+    vi.spyOn(api, "previewAiEdit").mockReturnValue(pending);
+
+    render(<AiEditBox resourceKey="meal-plan" primaryField="name" onApplied={vi.fn()} />);
+
+    await userEvent.type(screen.getByPlaceholderText(/tell the ai/i), "add something");
+    await userEvent.click(screen.getByRole("button", { name: /suggest/i }));
+
+    expect(await screen.findByText(/thinking/i)).toBeInTheDocument();
+
+    resolvePreview({ created: [], updated: [], deleted: [], items: [] });
+    expect(await screen.findByText(/no changes/i)).toBeInTheDocument();
+  });
+
   it("shows 'No changes' when the preview is empty on all three counts", async () => {
     vi.spyOn(api, "previewAiEdit").mockResolvedValue({
       created: [], updated: [], deleted: [], items: [],

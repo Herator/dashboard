@@ -1560,8 +1560,11 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 2px solid rgba(0, 0, 0, 0.25);
-  border-top-color: var(--bg);
+  /* currentColor rather than hardcoded colors: this spinner sits inside
+     buttons with very different text colors (accent-filled vs. the default
+     dark surface), and needs to read clearly on both. */
+  border: 2px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
   display: inline-block;
   animation: workout-spin 0.7s linear infinite;
 }

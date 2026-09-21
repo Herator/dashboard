@@ -58,7 +58,13 @@ export default function AiEditBox({ resourceKey, primaryField, onApplied, dateFr
           disabled={loading || !!preview}
         />
         <button type="submit" disabled={loading || !message || !!preview}>
-          Suggest
+          {loading && !preview ? (
+            <>
+              <span className="workout-spinner" aria-hidden="true" /> Thinking…
+            </>
+          ) : (
+            "Suggest"
+          )}
         </button>
       </form>
 
@@ -92,7 +98,13 @@ export default function AiEditBox({ resourceKey, primaryField, onApplied, dateFr
               Cancel
             </button>
             <button type="button" onClick={handleApply} disabled={loading}>
-              Apply
+              {loading ? (
+                <>
+                  <span className="workout-spinner" aria-hidden="true" /> Applying…
+                </>
+              ) : (
+                "Apply"
+              )}
             </button>
           </div>
         </div>
