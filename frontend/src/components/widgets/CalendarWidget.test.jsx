@@ -44,6 +44,29 @@ describe("CalendarWidget", () => {
     expect(within(agenda).getByRole("button", { name: /Dentist/ })).toBeInTheDocument();
   });
 
+  it("keeps month day cells at a fixed height even when they contain events", async () => {
+    const todayStr = toYMD(new Date());
+    mockListItems({
+      events: [
+        {
+          id: 1,
+          source: "self",
+          title: "Very long event title that should not expand the entire day cell",
+          start: `${todayStr}T09:00:00`,
+          end: `${todayStr}T10:00:00`,
+          location: null,
+          notes: null,
+          color: "#4a9eff",
+        },
+      ],
+    });
+
+    render(<CalendarWidget />);
+
+    const dayCell = await screen.findByTestId(`calendar-day-${todayStr}`);
+    expect(getComputedStyle(dayCell).height).toBe("92px");
+  });
+
   it("double-clicking a day opens the add-event form directly", async () => {
     const todayStr = toYMD(new Date());
     mockListItems({});
