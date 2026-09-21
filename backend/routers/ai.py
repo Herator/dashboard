@@ -228,7 +228,16 @@ def _ask_ai(
         "create — a new entry's date/time is whatever the request specifies, "
         "not limited to the range described below (that range only bounds "
         "which *existing* entries you were shown and can update or delete). "
-        "Never invent an existing entry (a real, non-null `id`) you weren't given."
+        "Never invent an existing entry (a real, non-null `id`) you weren't given. "
+        "IMPORTANT: leaving an existing entry out of your response deletes it — "
+        "there is no third option of 'leave it alone by not mentioning it'. For a "
+        "broad request that touches many entries at once (e.g. 'update/redo the "
+        "whole week'), you must still include every existing entry in your "
+        "response: echo back unchanged whichever ones the request doesn't ask you "
+        "to change, and give a real replacement to every one it does — never "
+        "respond with a short or partial list and let the rest silently "
+        "disappear. Only omit an entry when the request explicitly asks to "
+        "remove/clear/delete it."
         + scope_note
         + (" " + config.extra_instructions if config.extra_instructions else "")
     )
@@ -241,7 +250,14 @@ def _ask_ai(
             ),
             config=genai_types.GenerateContentConfig(
                 system_instruction=system_prompt,
-                max_output_tokens=4096,
+                # A broad request ("update the whole week") echoes back every
+                # existing entry plus whatever's new/changed — comfortably
+                # more than a couple of one-off edits. Bumped from 4096 since
+                # a truncated response silently drops entries (see the
+                # MAX_TOKENS check below): omission always means "delete" per
+                # the reconciliation contract, so a cut-off response would
+                # otherwise wipe out everything past the cutoff on apply.
+                max_output_tokens=8192,
                 response_mime_type="application/json",
                 response_schema=config.result_schema,
             ),
@@ -249,9 +265,19 @@ def _ask_ai(
     except genai_errors.APIError as exc:
         raise HTTPException(status_code=502, detail=f"AI request failed: {exc}")
 
-    if _finish_reason(response) == "SAFETY":
+    finish_reason = _finish_reason(response)
+    if finish_reason == "SAFETY":
         raise HTTPException(
             status_code=422, detail="The AI declined to process this request."
+        )
+    if finish_reason == "MAX_TOKENS":
+        # Surfaced as an error rather than risking a "successful" preview
+        # built from a truncated array — omission means deletion downstream,
+        # so a silently-cut-off response would look fine here and then wipe
+        # out everything the AI didn't get to before apply.
+        raise HTTPException(
+            status_code=502,
+            detail="The AI's response was too large and got cut off — try a narrower request (e.g. one day at a time).",
         )
 
     # .parsed is None both for a truly empty response and for one whose JSON

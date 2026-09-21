@@ -224,6 +224,24 @@ def test_ai_edit_returns_422_when_the_ai_refuses(client, session):
     assert "declined" in resp.json()["detail"].lower()
 
 
+def test_ai_edit_returns_502_when_the_response_is_truncated(client, session):
+    """A cut-off response must fail loudly rather than proceed as if the AI
+    meant to return a short array — omission means deletion downstream (see
+    _ask_ai's system prompt), so a truncated 'success' would delete every
+    entry the AI didn't get to before hitting the token limit."""
+    from backend.routers.ai import get_ai_client
+
+    mock_client = make_mock_gemini_client([], finish_reason="MAX_TOKENS")
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
+
+    resp = client.post("/api/meal-plan/ai-edit", json={"message": "regenerate the whole week"})
+
+    app.dependency_overrides.pop(get_ai_client, None)
+
+    assert resp.status_code == 502
+    assert "cut off" in resp.json()["detail"].lower()
+
+
 def test_ai_edit_returns_502_when_parsed_is_none(client, session):
     """.parsed is None both for a truly empty response and for one whose JSON
     didn't match the schema — the SDK validates internally and swallows the
