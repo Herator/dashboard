@@ -229,6 +229,27 @@ def test_groceries_ai_edit_creates_a_new_item(client, session):
     assert body[0]["checked"] is False
 
 
+def test_meal_plan_ai_edit_prompt_encourages_variety_not_just_known_likes(client, session):
+    from backend.models import MealPreferences
+
+    session.add(MealPreferences(id=1, likes=["pizza", "tacos"], dislikes=["mushrooms"]))
+    session.commit()
+
+    mock_client = make_mock_client([])
+    app.dependency_overrides[get_ai_client] = lambda: mock_client
+
+    resp = client.post("/api/meal-plan/ai-edit", json={"message": "surprise me for dinner"})
+
+    app.dependency_overrides.pop(get_ai_client, None)
+
+    assert resp.status_code == 200
+    system_instruction = mock_client.models.generate_content.call_args.kwargs["config"].system_instruction
+    assert "pizza" in system_instruction and "tacos" in system_instruction
+    assert "mushrooms" in system_instruction
+    # The known-likes list must not be presented as the only allowed menu.
+    assert "not a ceiling" in system_instruction
+
+
 def test_meal_preferences_ai_edit_updates_the_singleton_row(client, session):
     from backend.models import MealPreferences
 

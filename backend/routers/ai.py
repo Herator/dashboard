@@ -185,7 +185,16 @@ def _meal_preference_note(session: Session) -> str:
         parts.append(f"likes: {', '.join(prefs.likes)}")
     if prefs.dislikes:
         parts.append(f"dislikes (avoid these): {', '.join(prefs.dislikes)}")
-    return " The user's food preferences — " + "; ".join(parts) + " — should inform any meal you suggest or create."
+    return (
+        " The user's food preferences — " + "; ".join(parts) + " — should inform any "
+        "meal you suggest or create: never suggest a dislike, but don't just loop over "
+        "the liked list either. When asked for something new/a suggestion/surprise me "
+        "(rather than a specific dish), default to introducing dishes or ingredients "
+        "not already in their likes at least as often as familiar ones — the user can "
+        "always say afterward whether they liked it, which updates this list for next "
+        "time. Treat likes as a floor of things that are safe to reuse, not a ceiling "
+        "on what you're allowed to try."
+    )
 
 
 def _finish_reason(response: genai_types.GenerateContentResponse) -> Optional[str]:
